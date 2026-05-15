@@ -1,0 +1,158 @@
+.piano-roll {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #0f172a;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.piano-roll-header {
+    display: flex;
+    height: 60px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    background: rgba(15, 23, 42, 0.5);
+}
+
+.piano-roll-timeline {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.piano-roll-time-marker {
+    position: absolute;
+    top: 0;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    padding: 4px 8px;
+    border-left: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.piano-roll-tracks {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: auto;
+    position: relative;
+}
+
+.piano-roll-track-row {
+    display: flex;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+    background: rgba(15, 23, 42, 0.3);
+}
+
+.piano-roll-track-row:hover {
+    background: rgba(15, 23, 42, 0.5);
+}
+
+.piano-roll-track-content {
+    position: relative;
+    flex: 1;
+}
+
+.piano-roll-note {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s ease;
+    user-select: none;
+}
+
+/* smooth magnetic snapping for left and width changes */
+.piano-roll-note {
+    transition: left 80ms linear, width 80ms linear, opacity 120ms ease;
+}
+
+.piano-roll-note:hover {
+    opacity: 0.85;
+}
+
+.piano-roll-note.dragging {
+    opacity: 0.7;
+}
+
+.piano-roll-note-content {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.6);
+    pointer-events: none;
+    z-index: 1;
+    padding: 0 8px;
+}
+
+.piano-roll-note-resize-start,
+.piano-roll-note-resize-end {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    /* adjusted per request: smaller visible handle */
+    cursor: ew-resize;
+    background: rgba(255, 255, 255, 0.08);
+    z-index: 4;
+    /* subtle inner highlight so users can see the true edge */
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+.piano-roll-note-resize-start {
+    left: 0;
+    border-radius: 4px 0 0 4px;
+}
+
+.piano-roll-note-resize-end {
+    right: 0;
+    border-radius: 0 4px 4px 0;
+}
+
+.piano-roll-note-resize-start:hover,
+.piano-roll-note-resize-end:hover {
+    background: rgba(255, 255, 255, 0.28);
+}
+
+/* keep central area draggable */
+.piano-roll-note {
+    cursor: grab;
+}
+
+.piano-roll-playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #f87171;
+    z-index: 10;
+    pointer-events: none;
+    box-shadow: 0 0 10px rgba(248, 113, 113, 0.5);
+}
+
+.piano-roll-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(2, 6, 23, 0.4);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.06);
+    color: #cbd5e1;
+}
+
+.piano-roll-toolbar label {
+    font-size: 0.8rem;
+}
+
+.piano-roll-toolbar select {
+    background: rgba(255, 255, 255, 0.04);
+    color: #e6eef8;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 4px 8px;
+    border-radius: 6px;
+}
