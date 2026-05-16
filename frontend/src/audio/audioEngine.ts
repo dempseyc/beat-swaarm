@@ -1,4 +1,5 @@
 import { TrackId, Note } from '../types';
+import { bufferToWav } from './wavEncoder';
 
 interface AudioEngineOptions {
     onPlayheadUpdate?: (time: number) => void;
@@ -12,6 +13,8 @@ export class AudioEngine {
         2: null,
         3: null,
     };
+    // Store a random detune value for the kit, applied to all tracks to add variation for each load of the kit.
+    private kitDetune: number = 0;
     private sampleLoadPromises: Partial<Record<TrackId, Promise<void>>> = {};
     private isPlaying = false;
     private playheadTime = 0;
@@ -24,11 +27,14 @@ export class AudioEngine {
     private scheduledNotes = new Map<string, number>();
     private requestId: number | null = null;
     private onPlayheadUpdate: ((time: number) => void) | undefined;
+    private masterGain: GainNode | null = null;
 
     init(options: AudioEngineOptions = {}) {
         if (!this.audioContext) {
             this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
             this.onPlayheadUpdate = options.onPlayheadUpdate;
+            this.masterGain = this.audioContext.createGain();
+            this.masterGain.connect(this.audioContext.destination);
         }
     }
 
@@ -73,10 +79,40 @@ export class AudioEngine {
             3: null,
         };
         this.sampleLoadPromises = {};
+        // Generate a new random detune for the next kit (0 to 20 cents)
+        this.kitDetune = Math.random() * 20;
+        console.log(`New kit detune set to ${this.kitDetune.toFixed(2)} cents`);
     }
 
-    setTempo(bpm: number) {
-        this.tempo = bpm;
+    setSequencerVolume(volume: number) {
+        if (this.masterGain) {
+            this.masterGain.gain.value = volume;
+        }
+    }
+
+    async renderLoop(): Promise<Blob> {
+        // We will render exactly 1 loop length (8 seconds) at 44.1kHz
+        const sampleRate = 44100;
+        const offlineCtx = new OfflineAudioContext(2, sampleRate * this.loopLength, sampleRate);
+
+        this.notes.forEach(note => {
+            const buffer = this.sampleBuffers[note.trackId];
+            if (!buffer) return;
+
+            const source = offlineCtx.createBufferSource();
+            source.buffer = buffer;
+            source.detune.value = this.kitDetune;
+
+            const gain = offlineCtx.createGain();
+            gain.gain.value = 1; // You could apply volume here if needed
+
+            source.connect(gain).connect(offlineCtx.destination);
+            // Render from start of loop (0) up to duration
+            source.start(note.startTime, 0, note.duration);
+        });
+
+        const renderedBuffer = await offlineCtx.startRendering();
+        return bufferToWav(renderedBuffer);
     }
 
     setLoopLength(seconds: number) {
@@ -191,11 +227,18 @@ export class AudioEngine {
         const source = ctx.createBufferSource();
         source.buffer = buffer;
 
+        // Apply kit detune to all tracks
+        source.detune.value = this.kitDetune;
+
         const gain = ctx.createGain();
         gain.gain.value = 1;
 
         const startAt = scheduleTime;
-        source.connect(gain).connect(ctx.destination);
+        if (this.masterGain) {
+            source.connect(gain).connect(this.masterGain);
+        } else {
+            source.connect(gain).connect(ctx.destination);
+        }
         source.start(startAt, 0, note.duration);
 
         source.onended = () => {

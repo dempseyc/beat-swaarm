@@ -4,15 +4,18 @@ import './App.css';
 import { PianoRoll } from './components/PianoRoll';
 import { TransportControls } from './components/TransportControls';
 import { BpmControl } from './components/BpmControl';
+import { Mixer } from './components/Mixer';
 import { AudioEngine } from './audio/audioEngine';
 import { createInitialSequencerState } from './state/sequencer';
 import { Note, TrackId } from './types';
+import axios from 'axios';
 
 const KIT_SAMPLES = {
   haand: ['HAAND-hard.wav', 'HAAND-left.wav', 'HAAND-right.wav', 'HAAND-tap.wav'],
   piaano: ['PIAANO-high.wav', 'PIAANO-highright.wav', 'PIAANO-low.wav', 'PIAANO-lowleft.wav'],
   pandaa: ['SYNCOR_PANDAA.wav'],
   skelaa: ['SYNCOR_SKELAA.wav'],
+  thumpp: ['THUMPP.wav'],
 } as const;
 
 type KitName = keyof typeof KIT_SAMPLES;
@@ -22,6 +25,7 @@ const KIT_LABELS: Record<KitName, string> = {
   piaano: 'PIAANO',
   pandaa: 'PANDAA',
   skelaa: 'SKELAA',
+  thumpp: 'THUMPP',
 };
 
 const KIT_TRACKS = [0, 1, 2, 3] as TrackId[];
@@ -46,6 +50,7 @@ function App() {
   const [selectedKit, setSelectedKit] = useState<KitName>('haand');
   const [kitLoading, setKitLoading] = useState(false);
   const kitOptions = Object.keys(KIT_SAMPLES) as KitName[];
+  const [isRendering, setIsRendering] = useState(false);
 
   useEffect(() => {
     const engine = new AudioEngine();
@@ -118,6 +123,28 @@ function App() {
     setNotes(updatedNotes);
   };
 
+  const handleRenderAndUpload = async () => {
+    if (!audioEngineRef.current) return;
+    setIsRendering(true);
+    try {
+      const wavBlob = await audioEngineRef.current.renderLoop();
+
+      const formData = new FormData();
+      formData.append('loop', wavBlob, 'loop.wav');
+
+      await axios.post('http://localhost:4000/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      console.log('Successfully uploaded loop to backend.');
+    } catch (err) {
+      console.error('Failed to render/upload loop:', err);
+    } finally {
+      setIsRendering(false);
+    }
+  };
+
   const timeDisplay = playheadTime.toFixed(2);
 
   return (
@@ -153,6 +180,14 @@ function App() {
           </div>
           <BpmControl bpm={bpm} onChangeBpm={handleChangeBpm} />
           <TransportControls isPlaying={isPlaying} onTogglePlay={handleTogglePlay} />
+          <button
+            className="render-button"
+            onClick={handleRenderAndUpload}
+            disabled={isRendering}
+            style={{ marginLeft: '10px', padding: '0 15px', background: '#e04f5f', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            {isRendering ? 'Rendering...' : 'Render & Upload'}
+          </button>
         </section>
 
         <section className="sequencer-panel">
@@ -164,6 +199,8 @@ function App() {
             bpm={bpm}
           />
         </section>
+
+        <Mixer onSequencerVolumeChange={(vol) => audioEngineRef.current?.setSequencerVolume(vol)} />
 
         <footer className="app-footer">
           <p>Piano roll sequencer with sample kit loading and time-based note scheduling ready for swarm sync.</p>

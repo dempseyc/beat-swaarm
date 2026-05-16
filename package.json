@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "express-fileupload": "^1.5.2",
+    "multer": "^2.1.1"
+  }
+}
