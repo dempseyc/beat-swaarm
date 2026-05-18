@@ -1,3 +1,4 @@
+import { generateNoteId } from '../utils';
 import { Note, TrackId } from '../types';
 
 export function createInitialSequencerState() {
@@ -21,10 +22,6 @@ export function createInitialSequencerState() {
     };
 }
 
-export function generateNoteId(): string {
-    return `note-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-}
-
 export function addNote(notes: Note[], trackId: TrackId, startTime: number, duration: number = 0.5): Note[] {
     const newNote: Note = {
         id: generateNoteId(),
@@ -32,6 +29,7 @@ export function addNote(notes: Note[], trackId: TrackId, startTime: number, dura
         startTime,
         duration,
     };
+    console.log('New note created', newNote.id);
     return [...notes, newNote];
 }
 

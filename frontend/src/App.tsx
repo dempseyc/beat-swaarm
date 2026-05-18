@@ -15,7 +15,7 @@ const KIT_SAMPLES = {
   piaano: ['PIAANO-high.wav', 'PIAANO-highright.wav', 'PIAANO-low.wav', 'PIAANO-lowleft.wav'],
   pandaa: ['SYNCOR_PANDAA.wav'],
   skelaa: ['SYNCOR_SKELAA.wav'],
-  thumpp: ['THUMPP.wav'],
+  thumpp: ['THUMPP-hard.wav', 'THUMPP-left.wav', 'THUMPP-right.wav', 'THUMPP-tap.wav'],
 } as const;
 
 type KitName = keyof typeof KIT_SAMPLES;
@@ -58,9 +58,24 @@ function App() {
     engine.setNotes(initialState.notes);
     engine.setTempo(initialState.bpm);
     engine.setLoopLength(initialState.loopLength);
+
+    const ws = new WebSocket('ws://localhost:4000');
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'server-time') {
+          engine.setServerSync(data.epoch, data.timestamp);
+        } else if (data.type === 'main-loop-updated') {
+          engine.loadNextMainLoop(`${data.url}?t=${data.timestamp}`);
+        }
+      } catch (e) {
+        console.error('WebSocket Error', e);
+      }
+    };
     audioEngineRef.current = engine;
 
     return () => {
+      ws.close();
       engine.stop();
     };
   }, [initialState]);
@@ -200,7 +215,12 @@ function App() {
           />
         </section>
 
-        <Mixer onSequencerVolumeChange={(vol) => audioEngineRef.current?.setSequencerVolume(vol)} />
+        <Mixer
+          onSequencerVolumeChange={(vol) => audioEngineRef.current?.setSequencerVolume(vol)}
+          onMainVolumeChange={(vol) => audioEngineRef.current?.setMainVolume(vol)}
+          onM1VolumeChange={(vol) => audioEngineRef.current?.setMetror1Volume(vol)}
+          onM2VolumeChange={(vol) => audioEngineRef.current?.setMetror2Volume(vol)}
+        />
 
         <footer className="app-footer">
           <p>Piano roll sequencer with sample kit loading and time-based note scheduling ready for swarm sync.</p>
