@@ -211,8 +211,8 @@ export class AudioEngine {
 
     private startBackgroundTracks(baseStartTime: number, offset: number) {
         if (!this.audioContext) return;
-        const startAt = baseStartTime;
-
+        // const startAt = baseStartTime;
+        const startAt = 0
         const startSynced = (buffer: AudioBuffer | null, gain: GainNode | null, vol: number): AudioBufferSourceNode | null => {
             if (!buffer || !gain) return null;
             const source = this.audioContext!.createBufferSource();
