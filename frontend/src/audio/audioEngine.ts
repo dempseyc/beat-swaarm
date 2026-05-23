@@ -46,6 +46,9 @@ export class AudioEngine {
     private currentMainSource: AudioBufferSourceNode | null = null;
     private nextMainSource: AudioBufferSourceNode | null = null;
 
+    private scheduledLoops = new Set<number>();
+    private activeBackgroundSources = new Map<string, AudioBufferSourceNode>();
+
     // State
     private serverEpoch: number = 0;
     private serverTimeOffset: number = 0;
@@ -73,7 +76,7 @@ export class AudioEngine {
             this.m2Gain.connect(this.audioContext.destination);
 
             this.loadBuffer('/audio/native-kits/metrors/120_SYNCOR_PANDAA.wav').then(b => this.metror1Buffer = b).catch(e => console.warn("Missing metror1", e));
-            this.loadBuffer('/audio/native-kits/metrors/120_TACTOR_THUMPP.wav').then(b => this.metror2Buffer = b).catch(e => console.warn("Missing metror2", e));
+            this.loadBuffer('/audio/native-kits/metrors/120_TACTOR_THUMPP_2.wav').then(b => this.metror2Buffer = b).catch(e => console.warn("Missing metror2", e));
         }
     }
 
@@ -84,6 +87,9 @@ export class AudioEngine {
 
     private async loadBuffer(url: string): Promise<AudioBuffer> {
         const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to load buffer from ${url}: ${response.statusText}`);
+        }
         const arrayBuffer = await response.arrayBuffer();
         if (!this.audioContext) throw new Error("No context");
         return await this.audioContext.decodeAudioData(arrayBuffer);
@@ -127,7 +133,7 @@ export class AudioEngine {
     setLoopLength(seconds: number) { this.loopLength = seconds; }
 
     setSequencerVolume(volume: number) { if (this.masterGain) this.masterGain.gain.value = volume; }
-    setMainVolume(volume: number) { this.vols.main = volume; if (this.mainGain && !this.nextMainSource) this.mainGain.gain.value = volume; }
+    setMainVolume(volume: number) { this.vols.main = volume; if (this.mainGain) this.mainGain.gain.value = volume; }
     setMetror1Volume(volume: number) { this.vols.m1 = volume; if (this.m1Gain) this.m1Gain.gain.value = volume; }
     setMetror2Volume(volume: number) { this.vols.m2 = volume; if (this.m2Gain) this.m2Gain.gain.value = volume; }
 
@@ -205,28 +211,36 @@ export class AudioEngine {
         this.startTime = this.audioContext.currentTime - loopPosition;
         this.playheadTime = loopPosition;
 
-        this.startBackgroundTracks(this.startTime, loopPosition);
         this.schedule();
     }
 
-    private startBackgroundTracks(baseStartTime: number, offset: number) {
+    private scheduleLoops(loopIndex: number, startAt: number, offset: number) {
         if (!this.audioContext) return;
-        // const startAt = baseStartTime;
-        const startAt = 0
-        const startSynced = (buffer: AudioBuffer | null, gain: GainNode | null, vol: number): AudioBufferSourceNode | null => {
-            if (!buffer || !gain) return null;
+
+        const scheduleMetror = (buffer: AudioBuffer | null, gain: GainNode | null, vol: number, metrorName: string) => {
+            if (!buffer || !gain) return;
             const source = this.audioContext!.createBufferSource();
             source.buffer = buffer;
-            source.loop = true;
+            source.loop = false; // Schedule every loop instead of source.loop = true
             source.connect(gain);
             gain.gain.value = vol;
             source.start(startAt, offset);
-            return source;
+
+            const activeKey = `metror-${metrorName}:${loopIndex}`;
+            this.activeBackgroundSources.set(activeKey, source);
+
+            source.onended = () => {
+                this.activeBackgroundSources.delete(activeKey);
+            };
         };
 
-        this.metror1Source = startSynced(this.metror1Buffer, this.m1Gain, this.vols.m1);
-        this.metror2Source = startSynced(this.metror2Buffer, this.m2Gain, this.vols.m2);
-        this.currentMainSource = startSynced(this.currentMainBuffer, this.mainGain, this.vols.main);
+        scheduleMetror(this.metror1Buffer, this.m1Gain, this.vols.m1, '1');
+        scheduleMetror(this.metror2Buffer, this.m2Gain, this.vols.m2, '2');
+
+        // Also schedule the main loop perfectly matched with metrors
+        if (this.currentMainBuffer && this.mainGain) {
+            scheduleMetror(this.currentMainBuffer, this.mainGain, this.vols.main, 'main');
+        }
     }
 
     stop() {
@@ -234,6 +248,12 @@ export class AudioEngine {
         this.activeNotes.forEach(source => source.stop());
         this.activeNotes.clear();
         this.scheduledNotes.clear();
+
+        this.activeBackgroundSources.forEach(source => {
+            try { source.stop(); } catch (e) { }
+        });
+        this.activeBackgroundSources.clear();
+        this.scheduledLoops.clear();
 
         [this.metror1Source, this.metror2Source, this.currentMainSource, this.nextMainSource].forEach(s => {
             if (s) try { s.stop(); } catch (e) { }
@@ -290,51 +310,28 @@ export class AudioEngine {
 
         const lookaheadTime = now + this.scheduleAheadTime;
 
-        if (this.nextMainBuffer && !this.nextMainSource && this.audioContext) {
-            const nextLoopStart = this.startTime + (loopIndex + 1) * this.loopLength;
-            if (nextLoopStart < lookaheadTime) {
-                const newSource = this.audioContext.createBufferSource();
-                newSource.buffer = this.nextMainBuffer;
-                newSource.loop = true;
-                newSource.connect(this.nextMainGain!);
-                newSource.start(nextLoopStart);
-                this.nextMainSource = newSource;
-
-                const fadeTime = 0.1;
-                this.nextMainGain!.gain.setValueAtTime(0, nextLoopStart);
-                this.nextMainGain!.gain.linearRampToValueAtTime(this.vols.main, nextLoopStart + fadeTime);
-
-                if (this.currentMainSource && this.mainGain) {
-                    this.mainGain.gain.setValueAtTime(this.vols.main, nextLoopStart);
-                    this.mainGain.gain.linearRampToValueAtTime(0, nextLoopStart + fadeTime);
-                    const oldSource = this.currentMainSource;
-                    oldSource.stop(nextLoopStart + fadeTime);
-                    setTimeout(() => {
-                        this.currentMainBuffer = this.nextMainBuffer;
-                        this.currentMainSource = this.nextMainSource;
-                        this.nextMainBuffer = null;
-                        this.nextMainSource = null;
-                        const tempGain = this.mainGain!;
-                        this.mainGain = this.nextMainGain;
-                        this.nextMainGain = tempGain;
-                    }, fadeTime * 1000 + 100);
-                } else {
-                    setTimeout(() => {
-                        this.currentMainBuffer = this.nextMainBuffer;
-                        this.currentMainSource = this.nextMainSource;
-                        this.nextMainBuffer = null;
-                        this.nextMainSource = null;
-                        const tempGain = this.mainGain!;
-                        this.mainGain = this.nextMainGain;
-                        this.nextMainGain = tempGain;
-                    }, fadeTime * 1000 + 100);
-                }
-            }
+        if (this.nextMainBuffer && this.audioContext) {
+            this.currentMainBuffer = this.nextMainBuffer;
+            this.nextMainBuffer = null;
         }
 
         // Schedule notes for the current loop and the next loop to handle the window perfectly
         [loopIndex, loopIndex + 1].forEach(targetLoopIndex => {
             const loopAbsoluteStart = this.startTime + (targetLoopIndex * this.loopLength);
+
+            // Schedule background tracks (metrors and main loop) exactly once per loop
+            if (!this.scheduledLoops.has(targetLoopIndex)) {
+                if (loopAbsoluteStart <= lookaheadTime && loopAbsoluteStart + this.loopLength > now) {
+                    let startAt = loopAbsoluteStart;
+                    let offset = 0;
+                    if (startAt < now) {
+                        offset = now - startAt;
+                        startAt = now;
+                    }
+                    this.scheduleLoops(targetLoopIndex, startAt, offset);
+                    this.scheduledLoops.add(targetLoopIndex);
+                }
+            }
 
             this.notes.forEach(note => {
                 const absoluteStart = loopAbsoluteStart + note.startTime;
@@ -351,7 +348,28 @@ export class AudioEngine {
             });
         });
 
+        // Cleanup old scheduled loop records to prevent memory leak
+        this.scheduledLoops.forEach(idx => {
+            if (idx < loopIndex - 1) this.scheduledLoops.delete(idx);
+        });
+
         this.requestId = requestAnimationFrame(() => this.schedule());
+    }
+
+    playNoteImmediate(trackId: TrackId, duration: number) {
+        if (!this.audioContext || this.audioContext.state === 'suspended') return;
+        const buffer = this.sampleBuffers[trackId];
+        if (!buffer) return;
+
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.detune.value = this.kitDetune;
+
+        const gain = this.audioContext.createGain();
+        gain.gain.value = 1;
+        if (this.masterGain) source.connect(gain).connect(this.masterGain);
+        else source.connect(gain).connect(this.audioContext.destination);
+        source.start(0, 0, duration);
     }
 
     private playNote(note: Note, scheduleTime: number, loopIndex: number) {

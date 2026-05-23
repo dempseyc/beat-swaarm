@@ -13,12 +13,49 @@ const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 4000;
 const START_TIME = Date.now(); // Global sync epoch
+const LOOP_DURATION = 4000; // 4 seconds in ms
 
-// Setup directories
+// State management for client loops
+const clientLoops = new Map(); // clientId -> { filename, birthday, lastUpdate }
+
+// Setup directories and clear temp files on startup
 const tmpDir = path.join(__dirname, 'tmp');
 const publicDir = path.join(__dirname, 'public');
-if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+
+if (fs.existsSync(tmpDir)) {
+    // Clean temp directory on startup
+    const files = fs.readdirSync(tmpDir);
+    for (const file of files) {
+        if (file.endsWith('.wav')) {
+            fs.unlinkSync(path.join(tmpDir, file));
+        }
+    }
+} else {
+    fs.mkdirSync(tmpDir, { recursive: true });
+}
+
+if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+}
+
+// Reset main.wav on startup
+const mainWavPath = path.join(publicDir, 'main.wav');
+if (fs.existsSync(mainWavPath)) {
+    fs.unlinkSync(mainWavPath);
+}
+fs.writeFileSync(mainWavPath, ''); // Empty file placeholder
+
+
+// CORS configuration - allow frontend to access
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    next();
+});
+
+// Serve public directory (where main.wav will live)
+app.use('/public', express.static(publicDir));
+app.use(express.json());
 
 // Setup multer for loop uploads
 const storage = multer.diskStorage({
@@ -32,22 +69,30 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Serve public directory (where main.wav will live)
-app.use('/public', express.static(publicDir));
-app.use(express.json());
-
-// CORS configuration - allow frontend to access
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    next();
-});
 app.post('/upload', upload.single('loop'), (req, res) => {
     if (!req.file) {
         return res.status(400).send('No file uploaded.');
     }
 
-    console.log(`Received loop: ${req.file.filename}`);
+    const clientId = req.body.clientId || 'anonymous';
+    console.log(`Received loop from ${clientId}: ${req.file.filename}`);
+
+    // If client already has a loop, we might want to delete the old file
+    if (clientLoops.has(clientId)) {
+        const oldLoop = clientLoops.get(clientId);
+        try {
+            fs.unlinkSync(path.join(tmpDir, oldLoop.filename));
+        } catch (e) {
+            console.warn(`Could not delete old loop for ${clientId}`);
+        }
+    }
+
+    // Register/Update client loop
+    clientLoops.set(clientId, {
+        filename: req.file.filename,
+        birthday: Date.now(),
+        lastUpdate: Date.now()
+    });
 
     // Trigger ffmpeg mix
     mixMainLoop();
@@ -55,43 +100,85 @@ app.post('/upload', upload.single('loop'), (req, res) => {
     res.json({ success: true, filename: req.file.filename });
 });
 
-function mixMainLoop() {
-    fs.readdir(tmpDir, (err, files) => {
-        if (err) {
-            console.error('Error reading tmp dir', err);
-            return;
-        }
+function getClientVolume(clientId) {
+    const loop = clientLoops.get(clientId);
+    if (!loop) return 0;
 
-        const wavFiles = files.filter(f => f.endsWith('.wav'));
-        if (wavFiles.length === 0) return;
+    const now = Date.now();
+    const age = now - loop.lastUpdate;
+    const epochCount = age / LOOP_DURATION;
 
-        const mainWavPath = path.join(publicDir, 'main.wav');
+    if (epochCount <= 2) return 1.0;
+    if (epochCount >= 6) return 0;
 
-        // If there's only one file, just copy it to avoid ffmpeg complex filter errors on 1 input
-        if (wavFiles.length === 1) {
-            fs.copyFile(path.join(tmpDir, wavFiles[0]), mainWavPath, (err) => {
-                if (err) console.error('Error copying to main.wav', err);
-                else broadcastNewMain();
-            });
-            return;
-        }
-
-        // Build ffmpeg command using amix
-        // ffmpeg -i a.wav -i b.wav -filter_complex amix=inputs=2:duration=longest -y main.wav
-        const inputs = wavFiles.map(f => `-i "${path.join(tmpDir, f)}"`).join(' ');
-        const ffmpegCmd = `ffmpeg ${inputs} -filter_complex amix=inputs=${wavFiles.length}:duration=longest -y "${mainWavPath}"`;
-
-        console.log(`Mixing ${wavFiles.length} loops...`);
-        exec(ffmpegCmd, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`ffmpeg error: ${error.message}`);
-                return;
-            }
-            console.log('Successfully mixed main.wav');
-            broadcastNewMain();
-        });
-    });
+    // Linear fade from 1.0 to 0.0 between epoch 2 and 6
+    // volume = 1.0 - (current_epoch - start_fade_epoch) / fade_duration_epochs
+    const volume = 1.0 - (epochCount - 2) / (6 - 2);
+    return Math.max(0, volume);
 }
+
+function mixMainLoop() {
+    const now = Date.now();
+
+    // Cleanup expired loops before mixing
+    for (const [clientId, loop] of clientLoops.entries()) {
+        const age = now - loop.lastUpdate;
+        if (age >= 6 * LOOP_DURATION) {
+            console.log(`Fading out and removing expired loop from ${clientId}`);
+            try {
+                fs.unlinkSync(path.join(tmpDir, loop.filename));
+            } catch (e) { }
+            clientLoops.delete(clientId);
+        }
+    }
+
+    const wavFiles = Array.from(clientLoops.entries()).map(([clientId, loop]) => ({
+        clientId,
+        filename: loop.filename,
+        volume: getClientVolume(clientId)
+    })).filter(item => item.volume > 0);
+
+    if (wavFiles.length === 0) {
+        // Reset main.wav to empty if no active loops
+        fs.writeFileSync(mainWavPath, '');
+        broadcastNewMain();
+        return;
+    }
+
+    // If only one active loop with full volume, just copy
+    if (wavFiles.length === 1 && wavFiles[0].volume === 1) {
+        fs.copyFile(path.join(tmpDir, wavFiles[0].filename), mainWavPath, (err) => {
+            if (err) console.error('Error copying to main.wav', err);
+            else broadcastNewMain();
+        });
+        return;
+    }
+
+    const inputs = wavFiles.map(item => `-i "${path.join(tmpDir, item.filename)}"`).join(' ');
+
+    // Build filter string with individual volumes
+    // [0:a]volume=1.0[a0]; [1:a]volume=0.5[a1]; [a0][a1]amix=inputs=2...
+    let filterStr = '';
+    wavFiles.forEach((item, i) => {
+        filterStr += `[${i}:a]volume=${item.volume.toFixed(2)}[v${i}]; `;
+    });
+    const inputLabels = wavFiles.map((_, i) => `[v${i}]`).join('');
+
+    const scaleFactor = Math.pow(wavFiles.length, 0.6);
+    filterStr += `${inputLabels}amix=inputs=${wavFiles.length}:duration=longest[mixed];[mixed]volume=${scaleFactor}[louder];[louder]alimiter=limit=0.95[out]`;
+
+    const ffmpegCmd = `ffmpeg ${inputs} -filter_complex "${filterStr}" -map "[out]" -y "${mainWavPath}"`;
+
+    console.log(`Mixing ${wavFiles.length} loops with additive gain factor ${scaleFactor.toFixed(2)}...`);
+    exec(ffmpegCmd, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`ffmpeg error: ${error.message}`);
+            return;
+        }
+        console.log('Successfully mixed main.wav');
+        broadcastNewMain();
+    });
+};
 
 function broadcastNewMain() {
     const broadcast = JSON.stringify({
@@ -108,7 +195,13 @@ function broadcastNewMain() {
 }
 
 wss.on('connection', ws => {
-    ws.send(JSON.stringify({ type: 'server-time', timestamp: Date.now(), epoch: START_TIME }));
+    const clientId = crypto.randomBytes(8).toString('hex');
+    ws.send(JSON.stringify({
+        type: 'server-time',
+        timestamp: Date.now(),
+        epoch: START_TIME,
+        clientId: clientId
+    }));
 
     ws.on('message', message => {
         let payload;
@@ -139,6 +232,13 @@ wss.on('connection', ws => {
         console.log('WebSocket client disconnected');
     });
 });
+
+// Periodic re-mix to handle fades
+setInterval(() => {
+    if (clientLoops.size > 0) {
+        mixMainLoop();
+    }
+}, LOOP_DURATION);
 
 server.listen(PORT, () => {
     console.log(`BEATSWAARM backend listening on http://localhost:${PORT}`);

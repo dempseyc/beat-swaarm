@@ -10,6 +10,7 @@ interface PianoRollProps {
     loopLength: number;
     onNotesChange: (notes: Note[]) => void;
     bpm: number;
+    quantizeDenom?: number;
 }
 
 const PIXELS_PER_SECOND = 160;
@@ -23,7 +24,7 @@ interface DragState {
     originalDuration: number;
 }
 
-export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm }: PianoRollProps) {
+export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm, quantizeDenom = 0 }: PianoRollProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [dragState, setDragState] = useState<DragState>({
         type: null,
@@ -32,7 +33,8 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm 
         originalStartTime: 0,
         originalDuration: 0,
     });
-    const [quantizeDenom, setQuantizeDenom] = useState<number>(16); // default 1/16
+    const [localQuantizeDenom, setLocalQuantizeDenom] = useState<number>(16); // default 1/16
+    const activeQuantizeDenom = quantizeDenom > 0 ? quantizeDenom : localQuantizeDenom;
 
     const timelineWidth = loopLength * PIXELS_PER_SECOND;
 
@@ -46,7 +48,7 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm 
         const startTime = clickX / PIXELS_PER_SECOND;
 
         if (startTime >= 0 && startTime < loopLength) {
-            const snapped = snapToGrid(startTime, quantizeDenom, true);
+            const snapped = snapToGrid(startTime, activeQuantizeDenom, true);
             const newNotes = addNote(notes, trackId, snapped);
             onNotesChange(newNotes);
         }
@@ -111,22 +113,22 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm 
         if (dragState.type === 'move') {
             newStartTime = Math.max(0, Math.min(dragState.originalStartTime + deltaTime, loopLength));
             // apply quantize snapping
-            newStartTime = snapToGrid(newStartTime, quantizeDenom, true);
+            newStartTime = snapToGrid(newStartTime, activeQuantizeDenom, true);
         } else if (dragState.type === 'resizeStart') {
             const newStart = dragState.originalStartTime + deltaTime;
             const maxStart = dragState.originalStartTime + dragState.originalDuration - 0.05;
             newStartTime = Math.max(0, Math.min(newStart, maxStart));
             newDuration = dragState.originalDuration - (newStartTime - dragState.originalStartTime);
             // snap start and duration to grid
-            newStartTime = snapToGrid(newStartTime, quantizeDenom, true);
-            const unit = 240 / (bpm || 120) / quantizeDenom;
+            newStartTime = snapToGrid(newStartTime, activeQuantizeDenom, true);
+            const unit = 240 / (bpm || 120) / activeQuantizeDenom;
             newDuration = Math.max(0.05, Math.round(newDuration / unit) * unit);
         } else if (dragState.type === 'resizeEnd') {
             const newEnd = dragState.originalStartTime + dragState.originalDuration + deltaTime;
             const maxEnd = loopLength;
             newDuration = Math.max(0.05, Math.min(newEnd, maxEnd) - dragState.originalStartTime);
             // snap end/duration to grid, with jitter for natural feel
-            const endTime = snapToGrid(dragState.originalStartTime + newDuration, quantizeDenom, true);
+            const endTime = snapToGrid(dragState.originalStartTime + newDuration, activeQuantizeDenom, true);
             newDuration = Math.max(0.05, endTime - dragState.originalStartTime);
         }
 
@@ -150,26 +152,6 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm 
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
         >
-            <div className="piano-roll-toolbar">
-                <label htmlFor="quantize-select">Quantize</label>
-                <select
-                    id="quantize-select"
-                    value={quantizeDenom}
-                    onChange={e => setQuantizeDenom(Number(e.target.value))}
-                >
-                    <option value={48}>1/48</option>
-                    <option value={32}>1/32</option>
-                    <option value={24}>1/24 (triplet)</option>
-                    <option value={16}>1/16</option>
-                    <option value={12}>1/12 (triplet)</option>
-                    <option value={8}>1/8</option>
-                    <option value={6}>1/6 (triplet)</option>
-                    <option value={4}>1/4</option>
-                    <option value={3}>1/3 (triplet)</option>
-                    <option value={2}>1/2</option>
-                    <option value={1}>Whole</option>
-                </select>
-            </div>
             <div className="piano-roll-header">
                 <div className="piano-roll-timeline">
                     {Array.from({ length: 9 }).map((_, i) => (

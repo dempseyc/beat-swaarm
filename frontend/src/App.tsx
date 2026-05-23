@@ -6,7 +6,8 @@ import { TransportControls } from './components/TransportControls';
 import { BpmControl } from './components/BpmControl';
 import { Mixer } from './components/Mixer';
 import { AudioEngine } from './audio/audioEngine';
-import { createInitialSequencerState } from './state/sequencer';
+import { DrumPad } from './components/DrumPad';
+import { addNote, createInitialSequencerState } from './state/sequencer';
 import { Note, TrackId } from './types';
 import axios from 'axios';
 
@@ -51,6 +52,12 @@ function App() {
   const [kitLoading, setKitLoading] = useState(false);
   const kitOptions = Object.keys(KIT_SAMPLES) as KitName[];
   const [isRendering, setIsRendering] = useState(false);
+  const [keepGoing, setKeepGoing] = useState(false);
+  const lastPlayheadTimeRef = useRef(0);
+  const loopCounterRef = useRef(0);
+
+  const [quantizeDenom, setQuantizeDenom] = useState<number>(4); // default 1/4
+  const [quantizeEnabled, setQuantizeEnabled] = useState<boolean>(true);
 
   useEffect(() => {
     const engine = new AudioEngine();
@@ -65,6 +72,8 @@ function App() {
         const data = JSON.parse(event.data);
         if (data.type === 'server-time') {
           engine.setServerSync(data.epoch, data.timestamp);
+          // Store client ID for uploads
+          (window as any).clientId = data.clientId;
         } else if (data.type === 'main-loop-updated') {
           engine.loadNextMainLoop(`${data.url}?t=${data.timestamp}`);
         }
@@ -138,14 +147,31 @@ function App() {
     setNotes(updatedNotes);
   };
 
+  useEffect(() => {
+    if (!keepGoing || !isPlaying || isRendering) return;
+
+    // Check for playhead crossover (new loop)
+    if (playheadTime < lastPlayheadTimeRef.current) {
+      loopCounterRef.current += 1;
+
+      // Every 2 loops, re-upload to keep alive
+      if (loopCounterRef.current >= 2) {
+        loopCounterRef.current = 0;
+        handleRenderAndUpload();
+      }
+    }
+    lastPlayheadTimeRef.current = playheadTime;
+  }, [playheadTime, keepGoing, isPlaying, isRendering]);
+
   const handleRenderAndUpload = async () => {
-    if (!audioEngineRef.current) return;
+    if (!audioEngineRef.current || isRendering) return;
     setIsRendering(true);
     try {
       const wavBlob = await audioEngineRef.current.renderLoop();
 
       const formData = new FormData();
       formData.append('loop', wavBlob, 'loop.wav');
+      formData.append('clientId', (window as any).clientId || 'unknown');
 
       await axios.post('http://localhost:4000/upload', formData, {
         headers: {
@@ -158,6 +184,23 @@ function App() {
     } finally {
       setIsRendering(false);
     }
+  };
+
+  const handlePadTrigger = (trackId: TrackId) => {
+    if (!isPlaying || !audioEngineRef.current) return;
+
+    // Play immediately
+    audioEngineRef.current.playNoteImmediate(trackId, 0.25);
+
+    // Add to sequencer
+    setNotes(prevNotes => {
+      let startTime = playheadTime;
+      if (quantizeEnabled) {
+        const { snapToGrid } = require('./utils');
+        startTime = snapToGrid(startTime, quantizeDenom, bpm, loopLength, false);
+      }
+      return addNote(prevNotes, trackId, startTime, 0.25);
+    });
   };
 
   const timeDisplay = playheadTime.toFixed(2);
@@ -203,16 +246,58 @@ function App() {
           >
             {isRendering ? 'Rendering...' : 'Render & Upload'}
           </button>
+          <div className="keep-going-control" style={{ marginLeft: '15px', display: 'flex', alignItems: 'center' }}>
+            <input
+              type="checkbox"
+              id="keep-going-check"
+              checked={keepGoing}
+              onChange={e => setKeepGoing(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <label htmlFor="keep-going-check" style={{ marginLeft: '5px', color: '#fff', fontSize: '0.8rem', cursor: 'pointer' }}>Keep Going</label>
+          </div>
         </section>
 
         <section className="sequencer-panel">
+          <div className="piano-roll-toolbar" style={{ marginBottom: '10px' }}>
+            <label htmlFor="quantize-enable" style={{ color: '#fff', fontSize: '0.8rem', marginRight: '5px' }}>
+              <input
+                type="checkbox"
+                id="quantize-enable"
+                checked={quantizeEnabled}
+                onChange={e => setQuantizeEnabled(e.target.checked)}
+                style={{ marginRight: '5px' }}
+              />
+              Quantize
+            </label>
+            <select
+              id="quantize-select"
+              value={quantizeDenom}
+              onChange={e => setQuantizeDenom(Number(e.target.value))}
+              disabled={!quantizeEnabled}
+            >
+              <option value={48}>1/48</option>
+              <option value={32}>1/32</option>
+              <option value={24}>1/24 (triplet)</option>
+              <option value={16}>1/16</option>
+              <option value={12}>1/12 (triplet)</option>
+              <option value={8}>1/8</option>
+              <option value={6}>1/6 (triplet)</option>
+              <option value={4}>1/4</option>
+              <option value={3}>1/3 (triplet)</option>
+              <option value={2}>1/2</option>
+              <option value={1}>Whole</option>
+            </select>
+          </div>
           <PianoRoll
             notes={notes}
             playheadTime={playheadTime}
             loopLength={loopLength}
             onNotesChange={handleNotesChange}
             bpm={bpm}
+            quantizeDenom={quantizeEnabled ? quantizeDenom : 0}
           />
+          <DrumPad onPadTrigger={handlePadTrigger} />
         </section>
 
         <Mixer
