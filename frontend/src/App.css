@@ -115,51 +115,7 @@ h1 {
   flex-direction: column;
 }
 
-.transport-controls {
-  display: flex;
-  align-items: center;
-}
 
-.transport-button {
-  color: white;
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
-  border: none;
-  border-radius: 14px;
-  padding: 14px 24px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.16s ease, opacity 0.16s ease;
-}
-
-.transport-button:hover,
-.transport-button:focus {
-  transform: translateY(-1px);
-  opacity: 0.96;
-}
-
-.bpm-control {
-  display: grid;
-  gap: 10px;
-  min-width: 240px;
-}
-
-.bpm-control label {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #cbd5e1;
-}
-
-.bpm-control input[type='range'] {
-  width: 100%;
-}
-
-.bpm-control span {
-  display: inline-flex;
-  justify-content: center;
-  color: #f8fafc;
-  font-weight: 700;
-}
 
 .app-footer {
   margin-top: 18px;

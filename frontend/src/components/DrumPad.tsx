@@ -1,9 +1,13 @@
 import React from 'react';
 import { TrackId } from '../types';
+import { TRACK_COLORS } from '../constants';
+
 
 interface DrumPadProps {
     onPadTrigger: (trackId: TrackId) => void;
 }
+
+
 
 export function DrumPad({ onPadTrigger }: DrumPadProps) {
     const handleTrigger = (e: React.MouseEvent | React.TouchEvent, trackId: TrackId) => {
@@ -17,7 +21,7 @@ export function DrumPad({ onPadTrigger }: DrumPadProps) {
                 className="drum-pad accent"
                 onMouseDown={e => handleTrigger(e, 0)}
                 onTouchStart={e => handleTrigger(e, 0)}
-                style={{ flex: 1, backgroundColor: '#ff6b6b', border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
+                style={{ flex: 1, backgroundColor: TRACK_COLORS[0], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
                 Accent (0)
             </button>
@@ -25,7 +29,7 @@ export function DrumPad({ onPadTrigger }: DrumPadProps) {
                 className="drum-pad left"
                 onMouseDown={e => handleTrigger(e, 1)}
                 onTouchStart={e => handleTrigger(e, 1)}
-                style={{ flex: 3, backgroundColor: '#4ecdc4', border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
+                style={{ flex: 3, backgroundColor: TRACK_COLORS[1], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
                 Left (1)
             </button>
@@ -33,7 +37,7 @@ export function DrumPad({ onPadTrigger }: DrumPadProps) {
                 className="drum-pad right"
                 onMouseDown={e => handleTrigger(e, 2)}
                 onTouchStart={e => handleTrigger(e, 2)}
-                style={{ flex: 3, backgroundColor: '#4ecdc4', border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
+                style={{ flex: 3, backgroundColor: TRACK_COLORS[2], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
                 Right (2)
             </button>
@@ -41,7 +45,7 @@ export function DrumPad({ onPadTrigger }: DrumPadProps) {
                 className="drum-pad tap"
                 onMouseDown={e => handleTrigger(e, 3)}
                 onTouchStart={e => handleTrigger(e, 3)}
-                style={{ flex: 1, backgroundColor: '#ff9f43', border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
+                style={{ flex: 1, backgroundColor: TRACK_COLORS[3], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
                 Tap (3)
             </button>

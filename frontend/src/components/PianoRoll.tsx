@@ -1,6 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Note, TrackId, TRACK_IDS } from '../types';
 import { addNote, deleteNote, updateNote } from '../state/sequencer';
+import { TRACK_COLORS } from '../constants';
+// ts-ignore for CSS import
 // @ts-ignore
 import './PianoRoll.css';
 
@@ -12,9 +14,6 @@ interface PianoRollProps {
     bpm: number;
     quantizeDenom?: number;
 }
-
-const PIXELS_PER_SECOND = 160;
-const TRACK_HEIGHT = 60;
 
 interface DragState {
     type: 'move' | 'resizeStart' | 'resizeEnd' | null;
@@ -33,10 +32,7 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
         originalStartTime: 0,
         originalDuration: 0,
     });
-    const [localQuantizeDenom, setLocalQuantizeDenom] = useState<number>(16); // default 1/16
-    const activeQuantizeDenom = quantizeDenom > 0 ? quantizeDenom : localQuantizeDenom;
-
-    const timelineWidth = loopLength * PIXELS_PER_SECOND;
+    const activeQuantizeDenom = quantizeDenom > 0 ? quantizeDenom : 16;
 
     const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>, trackId: TrackId) => {
         if (e.button !== 0) return;
@@ -45,7 +41,8 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
         if (!rect) return;
 
         const clickX = e.clientX - rect.left;
-        const startTime = clickX / PIXELS_PER_SECOND;
+        const width = rect.width;
+        const startTime = (clickX / width) * loopLength;
 
         if (startTime >= 0 && startTime < loopLength) {
             const snapped = snapToGrid(startTime, activeQuantizeDenom, true);
@@ -102,7 +99,8 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
         if (!rect) return;
 
         const deltaX = e.clientX - dragState.startX;
-        const deltaTime = deltaX / PIXELS_PER_SECOND;
+        const width = rect.width;
+        const deltaTime = (deltaX / width) * loopLength;
 
         const note = notes.find(n => n.id === dragState.noteId);
         if (!note) return;
@@ -155,7 +153,7 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
             <div className="piano-roll-header">
                 <div className="piano-roll-timeline">
                     {Array.from({ length: 9 }).map((_, i) => (
-                        <div key={i} className="piano-roll-time-marker" style={{ left: `${(i / 8) * loopLength * PIXELS_PER_SECOND}px` }}>
+                        <div key={i} className="piano-roll-time-marker" style={{ left: `${(i / 8) * 100}%` }}>
                             {i}
                         </div>
                     ))}
@@ -167,26 +165,23 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
                     <div
                         key={trackId}
                         className="piano-roll-track-row"
-                        style={{ height: TRACK_HEIGHT }}
+                        style={{ height: `${100 / TRACK_IDS.length}%` }}
                         onDoubleClick={e => handleDoubleClick(e, trackId)}
                     >
                         <div
                             ref={trackId === 0 ? scrollRef : undefined}
                             className="piano-roll-track-content"
-                            style={{
-                                width: timelineWidth,
-                                height: TRACK_HEIGHT,
-                                position: 'relative',
-                            }}
                         >
                             {trackNotes[trackId].map(note => (
                                 <div
                                     key={note.id}
                                     className="piano-roll-note"
                                     style={{
-                                        left: `${note.startTime * PIXELS_PER_SECOND}px`,
-                                        width: `${note.duration * PIXELS_PER_SECOND}px`,
-                                        height: '100%',
+                                        left: `${(note.startTime / loopLength) * 100}%`,
+                                        width: `${(note.duration / loopLength) * 100}%`,
+                                        height: '50%',
+                                        top: '25%',
+                                        backgroundColor: TRACK_COLORS[trackId]
                                     }}
                                     onDoubleClick={e => handleNoteDoubleClick(e, note.id)}
                                     onMouseDown={e => handleMouseDown(e, note.id, null)}
@@ -195,7 +190,6 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
                                         className="piano-roll-note-resize-start"
                                         onMouseDown={e => { e.stopPropagation(); handleMouseDown(e, note.id, 'start'); }}
                                     />
-                                    <div className="piano-roll-note-content">{note.id.substring(0, 6)}</div>
                                     <div
                                         className="piano-roll-note-resize-end"
                                         onMouseDown={e => { e.stopPropagation(); handleMouseDown(e, note.id, 'end'); }}
@@ -209,7 +203,7 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
                 <div
                     className="piano-roll-playhead"
                     style={{
-                        left: `${playheadTime * PIXELS_PER_SECOND}px`,
+                        left: `${(playheadTime / loopLength) * 100}%`,
                     }}
                 />
             </div>

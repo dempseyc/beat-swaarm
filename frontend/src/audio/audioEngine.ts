@@ -15,7 +15,8 @@ export class AudioEngine {
     };
     private kitDetune: number = 0;
     private sampleLoadPromises: Partial<Record<TrackId, Promise<void>>> = {};
-    private isPlaying = false;
+    private isTransportRunning = false;
+    private isMuted = false;
     private playheadTime = 0;
     private startTime = 0;
     private scheduleAheadTime = 0.2;
@@ -39,12 +40,6 @@ export class AudioEngine {
     private metror2Buffer: AudioBuffer | null = null;
     private currentMainBuffer: AudioBuffer | null = null;
     private nextMainBuffer: AudioBuffer | null = null;
-
-    // Sources
-    private metror1Source: AudioBufferSourceNode | null = null;
-    private metror2Source: AudioBufferSourceNode | null = null;
-    private currentMainSource: AudioBufferSourceNode | null = null;
-    private nextMainSource: AudioBufferSourceNode | null = null;
 
     private scheduledLoops = new Set<number>();
     private activeBackgroundSources = new Map<string, AudioBufferSourceNode>();
@@ -121,7 +116,7 @@ export class AudioEngine {
         try { await promise; } finally { delete this.sampleLoadPromises[trackId]; }
     }
 
-    setNotes(notes: Note[]) { console.log("AudioEngine setNotes:", notes); this.notes = notes; }
+    setNotes(notes: Note[]) { this.notes = notes; }
 
     clearSamples() {
         this.sampleBuffers = { 0: null, 1: null, 2: null, 3: null };
@@ -132,7 +127,14 @@ export class AudioEngine {
     setTempo(bpm: number) { this.tempo = bpm; }
     setLoopLength(seconds: number) { this.loopLength = seconds; }
 
-    setSequencerVolume(volume: number) { if (this.masterGain) this.masterGain.gain.value = volume; }
+    setMuted(muted: boolean) {
+        this.isMuted = muted;
+        if (this.masterGain) {
+            this.masterGain.gain.value = muted ? 0 : 1;
+        }
+    }
+
+    setSequencerVolume(volume: number) { if (this.masterGain && !this.isMuted) this.masterGain.gain.value = volume; }
     setMainVolume(volume: number) { this.vols.main = volume; if (this.mainGain) this.mainGain.gain.value = volume; }
     setMetror1Volume(volume: number) { this.vols.m1 = volume; if (this.m1Gain) this.m1Gain.gain.value = volume; }
     setMetror2Volume(volume: number) { this.vols.m2 = volume; if (this.m2Gain) this.m2Gain.gain.value = volume; }
@@ -191,8 +193,7 @@ export class AudioEngine {
         if (!this.audioContext) return;
         console.log(this.audioContext.state);
         if (this.audioContext.state === 'suspended') this.audioContext.resume();
-        this.isPlaying = true;
-        console.log(this.isPlaying)
+        this.isTransportRunning = true;
 
         const nowMs = Date.now();
 
@@ -244,7 +245,7 @@ export class AudioEngine {
     }
 
     stop() {
-        this.isPlaying = false;
+        this.isTransportRunning = false;
         this.activeNotes.forEach(source => source.stop());
         this.activeNotes.clear();
         this.scheduledNotes.clear();
@@ -255,14 +256,6 @@ export class AudioEngine {
         this.activeBackgroundSources.clear();
         this.scheduledLoops.clear();
 
-        [this.metror1Source, this.metror2Source, this.currentMainSource, this.nextMainSource].forEach(s => {
-            if (s) try { s.stop(); } catch (e) { }
-        });
-        this.metror1Source = null;
-        this.metror2Source = null;
-        this.currentMainSource = null;
-        this.nextMainSource = null;
-
         if (this.requestId !== null) {
             cancelAnimationFrame(this.requestId);
             this.requestId = null;
@@ -270,7 +263,7 @@ export class AudioEngine {
     }
 
     private schedule() {
-        if (!this.audioContext || !this.isPlaying) return;
+        if (!this.audioContext || !this.isTransportRunning) return;
 
         const now = this.audioContext.currentTime;
         const elapsed = now - this.startTime;

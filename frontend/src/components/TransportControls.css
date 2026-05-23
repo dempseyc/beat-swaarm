@@ -1,0 +1,41 @@
+.transport-controls {
+    display: flex;
+    align-items: center;
+}
+
+.transport-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: linear-gradient(145deg, #10b981, #059669);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.transport-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.transport-button:active {
+    transform: translateY(1px);
+}
+
+.transport-button.muted {
+    background: linear-gradient(145deg, #475569, #334155);
+    box-shadow: none;
+    color: #94a3b8;
+}
+
+.speaker-icon {
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

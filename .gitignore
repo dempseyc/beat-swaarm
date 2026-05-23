@@ -1,0 +1,26 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Dependency directories
+node_modules/
+
+# OS cache
+.DS_Store
+
+# IDEs
+.vscode/
+
+# Build and Temp folders
+dist/
+build/
+backend/tmp/
+backend/public/main.wav
+
+# Env
+.env
+.env.local

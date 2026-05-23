@@ -11,7 +11,6 @@ export interface Note {
 
 export interface SequencerState {
     bpm: number;
-    isPlaying: boolean;
     playheadTime: number; // in seconds
     notes: Note[];
     loopLength: number; // in seconds (e.g., 16 beats at 120 BPM = 8 seconds)

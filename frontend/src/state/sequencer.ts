@@ -15,7 +15,6 @@ export function createInitialSequencerState() {
 
     return {
         bpm: 120,
-        isPlaying: false,
         playheadTime: 0,
         notes,
         loopLength,

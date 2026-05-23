@@ -8,6 +8,7 @@ import { Mixer } from './components/Mixer';
 import { AudioEngine } from './audio/audioEngine';
 import { DrumPad } from './components/DrumPad';
 import { addNote, createInitialSequencerState } from './state/sequencer';
+import { snapToGrid } from './utils';
 import { Note, TrackId } from './types';
 import axios from 'axios';
 
@@ -43,8 +44,8 @@ function App() {
   const initialStateRef = useRef(createInitialSequencerState());
   const initialState = initialStateRef.current;
   const [notes, setNotes] = useState(initialState.notes);
-  const [bpm, setBpm] = useState(initialState.bpm);
-  const [isPlaying, setIsPlaying] = useState(initialState.isPlaying);
+  const bpm = initialState.bpm;
+  const [isMuted, setIsMuted] = useState(false);
   const [playheadTime, setPlayheadTime] = useState(initialState.playheadTime);
   const loopLength = initialState.loopLength;
   const audioEngineRef = useRef<AudioEngine | null>(null);
@@ -81,6 +82,7 @@ function App() {
         console.error('WebSocket Error', e);
       }
     };
+    engine.start(); // Start immediately and run continuously
     audioEngineRef.current = engine;
 
     return () => {
@@ -118,29 +120,17 @@ function App() {
     }
   }, [notes]);
 
-  useEffect(() => {
-    if (audioEngineRef.current) {
-      audioEngineRef.current.setTempo(bpm);
-    }
-  }, [bpm]);
-
-  const handleTogglePlay = () => {
+  const handleToggleMute = () => {
     const engine = audioEngineRef.current;
-    if (!engine || kitLoading) {
-      return;
-    }
-    if (isPlaying) {
-      engine.stop();
-      setIsPlaying(false);
-      setPlayheadTime(0);
-      return;
-    }
-    engine.start();
-    setIsPlaying(true);
-  };
+    if (!engine) return;
 
-  const handleChangeBpm = (value: number) => {
-    setBpm(value);
+    if (isMuted) {
+      engine.setMuted(false);
+      setIsMuted(false);
+    } else {
+      engine.setMuted(true);
+      setIsMuted(true);
+    }
   };
 
   const handleNotesChange = (updatedNotes: Note[]) => {
@@ -148,7 +138,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (!keepGoing || !isPlaying || isRendering) return;
+    if (!keepGoing || isRendering) return;
 
     // Check for playhead crossover (new loop)
     if (playheadTime < lastPlayheadTimeRef.current) {
@@ -161,7 +151,7 @@ function App() {
       }
     }
     lastPlayheadTimeRef.current = playheadTime;
-  }, [playheadTime, keepGoing, isPlaying, isRendering]);
+  }, [playheadTime, keepGoing, isRendering]);
 
   const handleRenderAndUpload = async () => {
     if (!audioEngineRef.current || isRendering) return;
@@ -187,7 +177,7 @@ function App() {
   };
 
   const handlePadTrigger = (trackId: TrackId) => {
-    if (!isPlaying || !audioEngineRef.current) return;
+    if (!audioEngineRef.current) return;
 
     // Play immediately
     audioEngineRef.current.playNoteImmediate(trackId, 0.25);
@@ -196,7 +186,6 @@ function App() {
     setNotes(prevNotes => {
       let startTime = playheadTime;
       if (quantizeEnabled) {
-        const { snapToGrid } = require('./utils');
         startTime = snapToGrid(startTime, quantizeDenom, bpm, loopLength, false);
       }
       return addNote(prevNotes, trackId, startTime, 0.25);
@@ -236,8 +225,8 @@ function App() {
             </select>
             <span className="kit-loading">{kitLoading ? 'Loading…' : ''}</span>
           </div>
-          <BpmControl bpm={bpm} onChangeBpm={handleChangeBpm} />
-          <TransportControls isPlaying={isPlaying} onTogglePlay={handleTogglePlay} />
+          <BpmControl bpm={bpm} />
+          <TransportControls isMuted={isMuted} onToggleMute={handleToggleMute} />
           <button
             className="render-button"
             onClick={handleRenderAndUpload}
