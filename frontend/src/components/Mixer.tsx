@@ -8,10 +8,10 @@ interface MixerProps {
 }
 
 export function Mixer({ onSequencerVolumeChange, onMainVolumeChange, onM1VolumeChange, onM2VolumeChange }: MixerProps) {
-    const [seqVol, setSeqVol] = useState(1);
-    const [mainVol, setMainVol] = useState(1);
-    const [metror1Vol, setMetror1Vol] = useState(1);
-    const [metror2Vol, setMetror2Vol] = useState(1);
+    const [seqVol, setSeqVol] = useState(0.6);
+    const [mainVol, setMainVol] = useState(0.6);
+    const [metror1Vol, setMetror1Vol] = useState(0.6);
+    const [metror2Vol, setMetror2Vol] = useState(0.6);
 
     const [mainUrl, setMainUrl] = useState<string | null>(null);
 

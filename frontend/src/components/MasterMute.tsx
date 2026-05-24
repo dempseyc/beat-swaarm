@@ -1,24 +1,24 @@
 import React from 'react';
 // @ts-ignore
-import './TransportControls.css';
+import './MasterMute.css';
 
-interface TransportControlsProps {
+interface MasterMuteProps {
     isMuted: boolean;
     onToggleMute: () => void;
 }
 
-export function TransportControls({ isMuted, onToggleMute }: TransportControlsProps) {
+export function MasterMute({ isMuted, onToggleMute }: MasterMuteProps) {
     return (
         <div className="transport-controls">
             <button
-                className={`transport-button ${isMuted ? 'muted' : ''}`}
+                className={`master-mute-button ${isMuted ? 'muted' : ''}`}
                 type="button"
                 onClick={onToggleMute}
             >
                 <div className="speaker-icon">
-                    {isMuted ? '🔇' : '🔊'}
+                    {isMuted ? '\\0\\' : '/•/'}
                 </div>
-                <span>{isMuted ? 'Muted' : 'Live'}</span>
+                <span>{isMuted ? 'Play' : 'Mute'}</span>
             </button>
         </div>
     );

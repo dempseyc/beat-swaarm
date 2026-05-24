@@ -2,8 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 // @ts-ignore
 import './App.css';
 import { PianoRoll } from './components/PianoRoll';
-import { TransportControls } from './components/TransportControls';
-import { BpmControl } from './components/BpmControl';
+import { MasterMute } from './components/MasterMute';
 import { Mixer } from './components/Mixer';
 import { AudioEngine } from './audio/audioEngine';
 import { DrumPad } from './components/DrumPad';
@@ -45,7 +44,7 @@ function App() {
   const initialState = initialStateRef.current;
   const [notes, setNotes] = useState(initialState.notes);
   const bpm = initialState.bpm;
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [playheadTime, setPlayheadTime] = useState(initialState.playheadTime);
   const loopLength = initialState.loopLength;
   const audioEngineRef = useRef<AudioEngine | null>(null);
@@ -127,6 +126,7 @@ function App() {
     if (isMuted) {
       engine.setMuted(false);
       setIsMuted(false);
+      engine.start();
     } else {
       engine.setMuted(true);
       setIsMuted(true);
@@ -210,6 +210,7 @@ function App() {
         </header>
 
         <section className="controls-row">
+          <MasterMute isMuted={isMuted} onToggleMute={handleToggleMute} />
           <div className="kit-selector">
             <label htmlFor="kit-select">Kit</label>
             <select
@@ -225,8 +226,6 @@ function App() {
             </select>
             <span className="kit-loading">{kitLoading ? 'Loading…' : ''}</span>
           </div>
-          <BpmControl bpm={bpm} />
-          <TransportControls isMuted={isMuted} onToggleMute={handleToggleMute} />
           <button
             className="render-button"
             onClick={handleRenderAndUpload}

@@ -16,7 +16,7 @@ export class AudioEngine {
     private kitDetune: number = 0;
     private sampleLoadPromises: Partial<Record<TrackId, Promise<void>>> = {};
     private isTransportRunning = false;
-    private isMuted = false;
+    private isMuted = true;
     private playheadTime = 0;
     private startTime = 0;
     private scheduleAheadTime = 0.2;
@@ -30,6 +30,7 @@ export class AudioEngine {
 
     // Gains
     private masterGain: GainNode | null = null;
+    private sequencerGain: GainNode | null = null;
     private mainGain: GainNode | null = null;
     private nextMainGain: GainNode | null = null;
     private m1Gain: GainNode | null = null;
@@ -54,21 +55,30 @@ export class AudioEngine {
             this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
             this.onPlayheadUpdate = options.onPlayheadUpdate;
 
+            // connect as parent of all gains to masterGain for unified mute control
             this.masterGain = this.audioContext.createGain();
             this.masterGain.connect(this.audioContext.destination);
+            this.masterGain.gain.value = 1;
+
+            this.sequencerGain = this.audioContext.createGain();
+            this.sequencerGain.connect(this.masterGain);
+            this.sequencerGain.gain.value = 1;
 
             this.mainGain = this.audioContext.createGain();
-            this.mainGain.connect(this.audioContext.destination);
+            this.mainGain.connect(this.masterGain);
+            this.mainGain.gain.value = 1;
 
             this.nextMainGain = this.audioContext.createGain();
-            this.nextMainGain.connect(this.audioContext.destination);
+            this.nextMainGain.connect(this.masterGain);
             this.nextMainGain.gain.value = 0;
 
             this.m1Gain = this.audioContext.createGain();
-            this.m1Gain.connect(this.audioContext.destination);
+            this.m1Gain.connect(this.masterGain);
+            this.m1Gain.gain.value = 1;
 
             this.m2Gain = this.audioContext.createGain();
-            this.m2Gain.connect(this.audioContext.destination);
+            this.m2Gain.connect(this.masterGain);
+            this.m2Gain.gain.value = 1;
 
             this.loadBuffer('/audio/native-kits/metrors/120_SYNCOR_PANDAA.wav').then(b => this.metror1Buffer = b).catch(e => console.warn("Missing metror1", e));
             this.loadBuffer('/audio/native-kits/metrors/120_TACTOR_THUMPP_2.wav').then(b => this.metror2Buffer = b).catch(e => console.warn("Missing metror2", e));
@@ -130,14 +140,14 @@ export class AudioEngine {
     setMuted(muted: boolean) {
         this.isMuted = muted;
         if (this.masterGain) {
-            this.masterGain.gain.value = muted ? 0 : 1;
+            this.masterGain.gain.value = muted ? 0 : 1; // is
         }
     }
 
-    setSequencerVolume(volume: number) { if (this.masterGain && !this.isMuted) this.masterGain.gain.value = volume; }
-    setMainVolume(volume: number) { this.vols.main = volume; if (this.mainGain) this.mainGain.gain.value = volume; }
-    setMetror1Volume(volume: number) { this.vols.m1 = volume; if (this.m1Gain) this.m1Gain.gain.value = volume; }
-    setMetror2Volume(volume: number) { this.vols.m2 = volume; if (this.m2Gain) this.m2Gain.gain.value = volume; }
+    setSequencerVolume(volume: number) { if (this.sequencerGain && !this.isMuted) this.sequencerGain.gain.value = volume; }
+    setMainVolume(volume: number) { this.vols.main = volume; if (this.mainGain && !this.isMuted) this.mainGain.gain.value = volume; }
+    setMetror1Volume(volume: number) { this.vols.m1 = volume; if (this.m1Gain && !this.isMuted) this.m1Gain.gain.value = volume; }
+    setMetror2Volume(volume: number) { this.vols.m2 = volume; if (this.m2Gain && !this.isMuted) this.m2Gain.gain.value = volume; }
 
     async renderLoop(): Promise<Blob> {
         const sampleRate = 44100;
@@ -377,7 +387,7 @@ export class AudioEngine {
 
         const gain = ctx.createGain();
         gain.gain.value = 1;
-        if (this.masterGain) source.connect(gain).connect(this.masterGain);
+        if (this.sequencerGain) source.connect(gain).connect(this.sequencerGain);
         else source.connect(gain).connect(ctx.destination);
         source.start(scheduleTime, 0, note.duration);
 

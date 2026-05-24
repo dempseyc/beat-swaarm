@@ -9,7 +9,7 @@ The frontend is a React + TypeScript app with a piano roll sequencer that provid
 - 4 drum tracks (loads custom samples from a kit folder)
 - Time-based note editing with precise scheduling
 - BPM control
-- Play/pause transport
+- Ongoing transport loop
 - Moving playhead with audio synchronization
 
 ### Piano Roll Interface
@@ -29,7 +29,9 @@ npm start
 
 ## Backend
 
-The backend is a lightweight Node.js Express server with a WebSocket endpoint for future loop upload orchestration.
+The backend is a lightweight Node.js Express server with a WebSocket endpoint for loop upload orchestration.
+
+It receives client loops, mixes them together and broadcasts main loop back to all clients.
 
 ### Run backend
 

@@ -1,9 +1,9 @@
-.transport-controls {
+.live-controls {
     display: flex;
     align-items: center;
 }
 
-.transport-button {
+.master-mute-button {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -18,16 +18,16 @@
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
 }
 
-.transport-button:hover {
+.master-mute-button:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
-.transport-button:active {
+.master-mute-button:active {
     transform: translateY(1px);
 }
 
-.transport-button.muted {
+.master-mute-button.muted {
     background: linear-gradient(145deg, #475569, #334155);
     box-shadow: none;
     color: #94a3b8;
