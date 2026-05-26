@@ -44,6 +44,7 @@ function App() {
   const initialState = initialStateRef.current;
   const [notes, setNotes] = useState(initialState.notes);
   const bpm = initialState.bpm;
+  const [numClients, setNumClients] = useState(1);
   const [isMuted, setIsMuted] = useState(true);
   const [playheadTime, setPlayheadTime] = useState(initialState.playheadTime);
   const loopLength = initialState.loopLength;
@@ -70,12 +71,14 @@ function App() {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        setNumClients(data.num_clients / 2); // hack unknown why backend count is doubled, maybe creates additional connection after handshake?
         if (data.type === 'server-time') {
           engine.setServerSync(data.epoch, data.timestamp);
           // Store client ID for uploads
           (window as any).clientId = data.clientId;
         } else if (data.type === 'main-loop-updated') {
           engine.loadNextMainLoop(`${data.url}?t=${data.timestamp}`);
+          console.log('Received main loop update from server:', data);
         }
       } catch (e) {
         console.error('WebSocket Error', e);
@@ -194,45 +197,66 @@ function App() {
 
   const timeDisplay = playheadTime.toFixed(2);
 
+  const QuantizeControl: React.FC<{
+    enabled: boolean;
+    denom: number;
+    onToggle: () => void;
+    onChangeDenom: (denom: number) => void;
+  }> = ({ enabled, denom, onToggle, onChangeDenom }) => {
+
+    return (<div className="quantize-controls">
+      <label htmlFor="quantize-enable" style={{ color: '#fff', fontSize: '0.8rem', marginRight: '5px' }}>
+        <input
+          type="checkbox"
+          id="quantize-enable"
+          checked={enabled}
+          onChange={e => onToggle()}
+          style={{ marginRight: '5px' }}
+        />
+        Quantize
+      </label>
+      <select
+        id="quantize-select"
+        value={denom}
+        onChange={e => onChangeDenom(Number(e.target.value))}
+        disabled={!enabled}
+      >
+        <option value={48}>1/48</option>
+        <option value={32}>1/32</option>
+        <option value={24}>1/24 (triplet)</option>
+        <option value={16}>1/16</option>
+        <option value={12}>1/12 (triplet)</option>
+        <option value={8}>1/8</option>
+        <option value={6}>1/6 (triplet)</option>
+        <option value={4}>1/4</option>
+        <option value={3}>1/3 (triplet)</option>
+        <option value={2}>1/2</option>
+        <option value={1}>Whole</option>
+      </select>
+    </div>)
+  };
+
   return (
     <div className="App">
       <div className="app-shell">
         <header className="app-header">
           <div>
             <p className="app-tag">BEATSWAARM</p>
-            <h1>Piano Roll Sequencer</h1>
             <p className="app-copy">Double-click to add notes, drag to resize, double-click again to delete. Load a kit of samples to sequence.</p>
           </div>
           <div className="status-panel">
             <div className="status-badge">BPM {bpm}</div>
-            <div className="status-badge">Time {timeDisplay}s / {loopLength.toFixed(2)}s</div>
+            <div className="status-badge">{timeDisplay}</div>
+            <div className="status-badge">Clients: {numClients}</div>
           </div>
-        </header>
-
-        <section className="controls-row">
           <MasterMute isMuted={isMuted} onToggleMute={handleToggleMute} />
-          <div className="kit-selector">
-            <label htmlFor="kit-select">Kit</label>
-            <select
-              id="kit-select"
-              value={selectedKit}
-              onChange={e => setSelectedKit(e.target.value as KitName)}
-            >
-              {kitOptions.map(kit => (
-                <option key={kit} value={kit}>
-                  {KIT_LABELS[kit]}
-                </option>
-              ))}
-            </select>
-            <span className="kit-loading">{kitLoading ? 'Loading…' : ''}</span>
-          </div>
           <button
             className="render-button"
             onClick={handleRenderAndUpload}
             disabled={isRendering}
             style={{ marginLeft: '10px', padding: '0 15px', background: '#e04f5f', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
           >
-            {isRendering ? 'Rendering...' : 'Render & Upload'}
+            {isRendering ? '.....' : 'Transmit'}
           </button>
           <div className="keep-going-control" style={{ marginLeft: '15px', display: 'flex', alignItems: 'center' }}>
             <input
@@ -242,41 +266,43 @@ function App() {
               onChange={e => setKeepGoing(e.target.checked)}
               style={{ cursor: 'pointer' }}
             />
-            <label htmlFor="keep-going-check" style={{ marginLeft: '5px', color: '#fff', fontSize: '0.8rem', cursor: 'pointer' }}>Keep Going</label>
+            <label htmlFor="keep-going-check" style={{ marginLeft: '5px', color: '#fff', fontSize: '0.8rem', cursor: 'pointer' }}>RE-TRANSMIT</label>
+          </div>
+        </header>
+
+        <section className="controls-row">
+          <div className="piano-roll-toolbar" style={{ marginBottom: '10px' }}>
+            <div className="kit-selector">
+              <label htmlFor="kit-select">Kit</label>
+              <select
+                id="kit-select"
+                value={selectedKit}
+                onChange={e => setSelectedKit(e.target.value as KitName)}
+              >
+                {kitOptions.map(kit => (
+                  <option key={kit} value={kit}>
+                    {KIT_LABELS[kit]}
+                  </option>
+                ))}
+              </select>
+              <span className="kit-loading">{kitLoading ? 'Loading…' : ''}</span>
+            </div>
+            <QuantizeControl
+              enabled={quantizeEnabled}
+              denom={quantizeDenom}
+              onToggle={() => setQuantizeEnabled(!quantizeEnabled)}
+              onChangeDenom={(denom) => setQuantizeDenom(denom)}
+            />
+            <Mixer
+              onSequencerVolumeChange={(vol) => audioEngineRef.current?.setSequencerVolume(vol)}
+              onMainVolumeChange={(vol) => audioEngineRef.current?.setMainVolume(vol)}
+              onM1VolumeChange={(vol) => audioEngineRef.current?.setMetror1Volume(vol)}
+              onM2VolumeChange={(vol) => audioEngineRef.current?.setMetror2Volume(vol)}
+            />
           </div>
         </section>
 
         <section className="sequencer-panel">
-          <div className="piano-roll-toolbar" style={{ marginBottom: '10px' }}>
-            <label htmlFor="quantize-enable" style={{ color: '#fff', fontSize: '0.8rem', marginRight: '5px' }}>
-              <input
-                type="checkbox"
-                id="quantize-enable"
-                checked={quantizeEnabled}
-                onChange={e => setQuantizeEnabled(e.target.checked)}
-                style={{ marginRight: '5px' }}
-              />
-              Quantize
-            </label>
-            <select
-              id="quantize-select"
-              value={quantizeDenom}
-              onChange={e => setQuantizeDenom(Number(e.target.value))}
-              disabled={!quantizeEnabled}
-            >
-              <option value={48}>1/48</option>
-              <option value={32}>1/32</option>
-              <option value={24}>1/24 (triplet)</option>
-              <option value={16}>1/16</option>
-              <option value={12}>1/12 (triplet)</option>
-              <option value={8}>1/8</option>
-              <option value={6}>1/6 (triplet)</option>
-              <option value={4}>1/4</option>
-              <option value={3}>1/3 (triplet)</option>
-              <option value={2}>1/2</option>
-              <option value={1}>Whole</option>
-            </select>
-          </div>
           <PianoRoll
             notes={notes}
             playheadTime={playheadTime}
@@ -288,15 +314,8 @@ function App() {
           <DrumPad onPadTrigger={handlePadTrigger} />
         </section>
 
-        <Mixer
-          onSequencerVolumeChange={(vol) => audioEngineRef.current?.setSequencerVolume(vol)}
-          onMainVolumeChange={(vol) => audioEngineRef.current?.setMainVolume(vol)}
-          onM1VolumeChange={(vol) => audioEngineRef.current?.setMetror1Volume(vol)}
-          onM2VolumeChange={(vol) => audioEngineRef.current?.setMetror2Volume(vol)}
-        />
-
         <footer className="app-footer">
-          <p>Piano roll sequencer with sample kit loading and time-based note scheduling ready for swarm sync.</p>
+          <p>Audio Loop Generator and Universal Time Swarm Sync</p>
         </footer>
       </div>
     </div>

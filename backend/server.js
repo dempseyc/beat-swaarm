@@ -184,12 +184,16 @@ function broadcastNewMain() {
     const broadcast = JSON.stringify({
         type: 'main-loop-updated',
         timestamp: Date.now(),
-        url: `http://localhost:${PORT}/public/main.wav`
+        url: `http://localhost:${PORT}/public/main.wav`,
+        num_clients: `${wss.clients.size || 0}`
     });
 
-    wss.clients.forEach(client => {
+    let i = 0;
+    wss.clients.forEach((client) => {
+        i++;
         if (client.readyState === WebSocket.OPEN) {
             client.send(broadcast);
+            console.log(`Broadcasted new main loop to client ${i + 1}/${wss.clients.size}`);
         }
     });
 }
@@ -200,7 +204,8 @@ wss.on('connection', ws => {
         type: 'server-time',
         timestamp: Date.now(),
         epoch: START_TIME,
-        clientId: clientId
+        clientId: clientId,
+        num_clients: `${wss.clients.size || 0}`
     }));
 
     ws.on('message', message => {
@@ -218,6 +223,7 @@ wss.on('connection', ws => {
                 loopId: payload.loopId,
                 timestamp: Date.now(),
                 meta: payload.meta || {},
+                num_clients: `${wss.clients.size || 0}`
             });
 
             wss.clients.forEach(client => {
@@ -229,6 +235,15 @@ wss.on('connection', ws => {
     });
 
     ws.on('close', () => {
+        const numClients = wss.clients.size || 0;
+        wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({
+                    type: 'num-clients-updated',
+                    num_clients: `${numClients}`
+                }));
+            }
+        });
         console.log('WebSocket client disconnected');
     });
 });

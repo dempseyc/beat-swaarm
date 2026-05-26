@@ -38,7 +38,7 @@ body {
 
 .app-tag {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 3rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: #a5b4fc;
@@ -57,12 +57,14 @@ h1 {
 }
 
 .status-panel {
+  width: 30%;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
 .status-badge {
+  width: 100%;
   padding: 10px 16px;
   border-radius: 999px;
   background: rgba(99, 102, 241, 0.16);
