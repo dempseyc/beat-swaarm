@@ -46,12 +46,12 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
 
         if (startTime >= 0 && startTime < loopLength) {
             const snapped = snapToGrid(startTime, activeQuantizeDenom, true);
-            const newNotes = addNote(notes, trackId, snapped);
+            const newNotes = addNote(notes, trackId, snapped, 2 / activeQuantizeDenom || 0.5);
             onNotesChange(newNotes);
         }
     };
 
-    function snapToGrid(time: number, denom: number, applyJitter = false) {
+    function snapToGrid(time: number, denom: number, applyJitter = true) {
         // denom is denominator of whole note (e.g., 16 -> 1/16)
         // whole note duration = 240 / bpm seconds
         const whole = 240 / (bpm || 120);
@@ -145,67 +145,88 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
 
     return (
         <div
-            className="piano-roll"
+            className="piano-roll flex-row"
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
         >
-            <div className="piano-roll-header">
-                <div className="piano-roll-timeline">
-                    {Array.from({ length: 9 }).map((_, i) => (
-                        <div key={i} className="piano-roll-time-marker" style={{ left: `${(i / 8) * 100}%` }}>
-                            {i}
+            <div className="clear-notes-button-container">
+                <button
+                    className="clear-notes-button clear-all-notes-button"
+                    onClick={() => onNotesChange([])}
+                >
+                    X
+                </button>
+                {TRACK_IDS.map((trackId) => (
+                    <button
+                        key={trackId}
+                        className="clear-notes-button clear-track-notes-button"
+                        onClick={() => onNotesChange(notes.filter(n => n.trackId !== trackId))}
+                    >
+                        X
+                    </button>
+                ))}
+            </div>
+            <div className="piano-roll-tracks-container">
+                <div className="piano-roll-header">
+
+                    <div className="piano-roll-timeline">
+                        {Array.from({ length: 9 }).map((_, i) => (
+                            <div key={i} className="piano-roll-time-marker" style={{ left: `${(i / 8) * 100}%` }}>
+                                {i + 1}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="piano-roll-tracks">
+                    {TRACK_IDS.map(trackId => (
+                        <div
+                            key={trackId}
+                            className="piano-roll-track-row"
+                            style={{ height: `${100 / TRACK_IDS.length}%` }}
+                            onDoubleClick={e => handleDoubleClick(e, trackId)}
+                        >
+                            <div
+                                ref={trackId === 0 ? scrollRef : undefined}
+                                className="piano-roll-track-content"
+                            >
+                                {trackNotes[trackId].map(note => (
+                                    <div
+                                        key={note.id}
+                                        className="piano-roll-note"
+                                        style={{
+                                            left: `${(note.startTime / loopLength) * 100}%`,
+                                            width: `${(note.duration / loopLength) * 100}%`,
+                                            height: '50%',
+                                            top: '25%',
+                                            backgroundColor: TRACK_COLORS[trackId]
+                                        }}
+                                        onDoubleClick={e => handleNoteDoubleClick(e, note.id)}
+                                        onMouseDown={e => handleMouseDown(e, note.id, null)}
+                                    >
+                                        <div
+                                            className="piano-roll-note-resize-start"
+                                            onMouseDown={e => { e.stopPropagation(); handleMouseDown(e, note.id, 'start'); }}
+                                        />
+                                        <div
+                                            className="piano-roll-note-resize-end"
+                                            onMouseDown={e => { e.stopPropagation(); handleMouseDown(e, note.id, 'end'); }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     ))}
-                </div>
-            </div>
 
-            <div className="piano-roll-tracks">
-                {TRACK_IDS.map(trackId => (
                     <div
-                        key={trackId}
-                        className="piano-roll-track-row"
-                        style={{ height: `${100 / TRACK_IDS.length}%` }}
-                        onDoubleClick={e => handleDoubleClick(e, trackId)}
-                    >
-                        <div
-                            ref={trackId === 0 ? scrollRef : undefined}
-                            className="piano-roll-track-content"
-                        >
-                            {trackNotes[trackId].map(note => (
-                                <div
-                                    key={note.id}
-                                    className="piano-roll-note"
-                                    style={{
-                                        left: `${(note.startTime / loopLength) * 100}%`,
-                                        width: `${(note.duration / loopLength) * 100}%`,
-                                        height: '50%',
-                                        top: '25%',
-                                        backgroundColor: TRACK_COLORS[trackId]
-                                    }}
-                                    onDoubleClick={e => handleNoteDoubleClick(e, note.id)}
-                                    onMouseDown={e => handleMouseDown(e, note.id, null)}
-                                >
-                                    <div
-                                        className="piano-roll-note-resize-start"
-                                        onMouseDown={e => { e.stopPropagation(); handleMouseDown(e, note.id, 'start'); }}
-                                    />
-                                    <div
-                                        className="piano-roll-note-resize-end"
-                                        onMouseDown={e => { e.stopPropagation(); handleMouseDown(e, note.id, 'end'); }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))}
+                        className="piano-roll-playhead"
+                        style={{
+                            left: `${(playheadTime / loopLength) * 100}%`,
+                        }}
+                    />
+                </div >
 
-                <div
-                    className="piano-roll-playhead"
-                    style={{
-                        left: `${(playheadTime / loopLength) * 100}%`,
-                    }}
-                />
             </div>
         </div>
     );

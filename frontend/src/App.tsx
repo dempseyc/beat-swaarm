@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import './App.css';
 import { PianoRoll } from './components/PianoRoll';
 import { MasterMute } from './components/MasterMute';
+import { QuantizeControl } from './components/QuantizeControl';
 import { Mixer } from './components/Mixer';
 import { AudioEngine } from './audio/audioEngine';
 import { DrumPad } from './components/DrumPad';
@@ -12,11 +13,16 @@ import { Note, TrackId } from './types';
 import axios from 'axios';
 
 const KIT_SAMPLES = {
-  haand: ['HAAND-hard.wav', 'HAAND-left.wav', 'HAAND-right.wav', 'HAAND-tap.wav'],
-  piaano: ['PIAANO-high.wav', 'PIAANO-highright.wav', 'PIAANO-low.wav', 'PIAANO-lowleft.wav'],
+
+  haand: ['HAAND-hard.wav', 'HAAND-right.wav', 'HAAND-left.wav', 'HAAND-tap.wav'],
+  bipp: ['BIPP-accent.wav', 'BIPP-right.wav', 'BIPP-left.wav', 'BIPP-tap.wav'],
+  blokk: ['BLOKK-high.wav', 'BLOKK-midhigh.wav', 'BLOKK-midlow.wav', 'BLOKK-low.wav'],
+  boingg: ['BOINGG-accent.wav', 'BOINGG-right.wav', 'BOINGG-left.wav', 'BOINGG-low.wav'],
+  piaano: ['PIAANO-high.wav', 'PIAANO-highright.wav', 'PIAANO-lowleft.wav', 'PIAANO-low.wav'],
   pandaa: ['SYNCOR_PANDAA.wav'],
   skelaa: ['SYNCOR_SKELAA.wav'],
   thumpp: ['THUMPP-hard.wav', 'THUMPP-left.wav', 'THUMPP-right.wav', 'THUMPP-tap.wav'],
+  pllluk: ['PLLLUK-high.wav', 'PLLLUK-midhigh.wav', 'PLLLUK-midlow.wav', 'PLLLUK-low.wav'],
 } as const;
 
 type KitName = keyof typeof KIT_SAMPLES;
@@ -27,6 +33,10 @@ const KIT_LABELS: Record<KitName, string> = {
   pandaa: 'PANDAA',
   skelaa: 'SKELAA',
   thumpp: 'THUMPP',
+  pllluk: 'PLLLUK',
+  bipp: 'BIPP',
+  blokk: 'BLOKK',
+  boingg: 'BOINGG',
 };
 
 const KIT_TRACKS = [0, 1, 2, 3] as TrackId[];
@@ -57,7 +67,7 @@ function App() {
   const lastPlayheadTimeRef = useRef(0);
   const loopCounterRef = useRef(0);
 
-  const [quantizeDenom, setQuantizeDenom] = useState<number>(4); // default 1/4
+  const [quantizeDenom, setQuantizeDenom] = useState<number>(4); // default 1/4 note
   const [quantizeEnabled, setQuantizeEnabled] = useState<boolean>(true);
 
   useEffect(() => {
@@ -78,7 +88,7 @@ function App() {
           (window as any).clientId = data.clientId;
         } else if (data.type === 'main-loop-updated') {
           engine.loadNextMainLoop(`${data.url}?t=${data.timestamp}`);
-          console.log('Received main loop update from server:', data);
+          console.log('Received main loop update from server:', data);// hack unknown why backend count is doubled, maybe creates additional connection after handshake?
         }
       } catch (e) {
         console.error('WebSocket Error', e);
@@ -94,6 +104,7 @@ function App() {
   }, [initialState]);
 
   useEffect(() => {
+    console.log('Selected kit changed:', selectedKit);
     const engine = audioEngineRef.current;
     if (!engine) {
       return;
@@ -138,7 +149,7 @@ function App() {
 
   const handleNotesChange = (updatedNotes: Note[]) => {
     setNotes(updatedNotes);
-  };
+  }; // []
 
   useEffect(() => {
     if (!keepGoing || isRendering) return;
@@ -189,52 +200,19 @@ function App() {
     setNotes(prevNotes => {
       let startTime = playheadTime;
       if (quantizeEnabled) {
-        startTime = snapToGrid(startTime, quantizeDenom, bpm, loopLength, false);
+        startTime = snapToGrid(startTime, quantizeDenom, bpm, loopLength, true);
       }
-      return addNote(prevNotes, trackId, startTime, 0.25);
+      // if note already exists at this time for the track, replace with new note instead allowing a tolerance of 15ms after quantization
+      const existing = prevNotes.find(n => n.trackId === trackId && Math.abs(n.startTime - startTime) < 0.015);
+      if (existing) {
+        return prevNotes.map(n => n.id === existing.id ? { ...n, startTime } : n);
+      }
+
+      return addNote(prevNotes, trackId, startTime, 2 / quantizeDenom || 0.5);
     });
   };
 
   const timeDisplay = playheadTime.toFixed(2);
-
-  const QuantizeControl: React.FC<{
-    enabled: boolean;
-    denom: number;
-    onToggle: () => void;
-    onChangeDenom: (denom: number) => void;
-  }> = ({ enabled, denom, onToggle, onChangeDenom }) => {
-
-    return (<div className="quantize-controls">
-      <label htmlFor="quantize-enable" style={{ color: '#fff', fontSize: '0.8rem', marginRight: '5px' }}>
-        <input
-          type="checkbox"
-          id="quantize-enable"
-          checked={enabled}
-          onChange={e => onToggle()}
-          style={{ marginRight: '5px' }}
-        />
-        Quantize
-      </label>
-      <select
-        id="quantize-select"
-        value={denom}
-        onChange={e => onChangeDenom(Number(e.target.value))}
-        disabled={!enabled}
-      >
-        <option value={48}>1/48</option>
-        <option value={32}>1/32</option>
-        <option value={24}>1/24 (triplet)</option>
-        <option value={16}>1/16</option>
-        <option value={12}>1/12 (triplet)</option>
-        <option value={8}>1/8</option>
-        <option value={6}>1/6 (triplet)</option>
-        <option value={4}>1/4</option>
-        <option value={3}>1/3 (triplet)</option>
-        <option value={2}>1/2</option>
-        <option value={1}>Whole</option>
-      </select>
-    </div>)
-  };
 
   return (
     <div className="App">
@@ -288,9 +266,7 @@ function App() {
               <span className="kit-loading">{kitLoading ? 'Loading…' : ''}</span>
             </div>
             <QuantizeControl
-              enabled={quantizeEnabled}
-              denom={quantizeDenom}
-              onToggle={() => setQuantizeEnabled(!quantizeEnabled)}
+              onToggle={(enabled) => setQuantizeEnabled(enabled)}
               onChangeDenom={(denom) => setQuantizeDenom(denom)}
             />
             <Mixer

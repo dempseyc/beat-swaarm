@@ -1,0 +1,77 @@
+You are helping build BEATSWAARM.
+
+Project Summary:
+BEATSWAARM is a browser-based distributed rhythm ecosystem.
+
+Each user has:
+- a local drum sequencer
+- local audio playback
+- ability to render/export a loop snapshot
+
+Users do NOT collaboratively edit patterns.
+
+Instead:
+- clients periodically upload rendered loop audio
+- backend schedules loops into a synchronized global swarm mix
+- synchronization is based on UNIX time and shared loop phase
+
+First milestone:
+Two users can:
+1. sequence local loops
+2. upload loop snapshots
+3. hear both loops synchronized on the next global downbeat
+
+Tech Stack:
+Frontend:
+- React
+- TypeScript
+- Web Audio API
+- Tone.js initially
+
+Backend:
+- Node.js
+- Express
+- websocket server
+- ffmpeg for normalization
+
+Requirements:
+- Create a simple 16-step drum sequencer UI
+- 4 drum tracks
+- play/pause controls
+- BPM control
+- visible moving playhead
+- accurate local timing
+- responsive mobile-friendly layout
+
+Audio:
+- use sample playback
+- schedule audio slightly ahead using Web Audio timing
+- avoid relying on setInterval for timing accuracy
+
+Structure:
+- keep components modular
+- separate transport logic from rendering logic
+- separate sequencer state from audio engine
+
+Future planned features:
+- offline loop rendering
+- global synchronized transport
+- loop uploads
+- swarm mixing
+- fading and persistence
+- evolving loop lengths
+
+Code priorities:
+1. timing stability
+2. simplicity
+3. readability
+4. modular architecture
+
+Avoid:
+- overengineering
+- multiplayer editing logic
+- authentication systems initially
+- database complexity initially
+
+Focus entirely on:
+single-user sequencer with architecture ready for future swarm synchronization.

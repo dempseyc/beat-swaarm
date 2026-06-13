@@ -3,15 +3,15 @@ import { Note, TrackId } from '../types';
 
 export function createInitialSequencerState() {
     const notes: Note[] = [
-        { id: '1', trackId: 0, startTime: 0, duration: 0.5 },       // Beat 0
-        { id: '2', trackId: 0, startTime: 2, duration: 0.5 },       // Beat 4
-        { id: '3', trackId: 1, startTime: 1, duration: 0.5 },       // Beat 2
-        { id: '4', trackId: 2, startTime: 0.5, duration: 0.5 },     // Beat 1
-        { id: '5', trackId: 2, startTime: 1.5, duration: 0.5 },     // Beat 3
+        { id: '1', trackId: 0, startTime: 0, duration: 0.5 },
+        { id: '3', trackId: 1, startTime: 1, duration: 0.5 },
+        { id: '2', trackId: 0, startTime: 2, duration: 0.5 },
+        { id: '4', trackId: 2, startTime: 3, duration: 0.5 },
+        { id: '5', trackId: 3, startTime: 4.5, duration: 0.5 },
     ];
 
     const beatsPerLoop = 8;
-    const loopLength = (beatsPerLoop * 60) / 120; // seconds at 120 BPM
+    const loopLength = (beatsPerLoop * 60) / 120;
 
     return {
         bpm: 120,

@@ -389,7 +389,13 @@ export class AudioEngine {
         gain.gain.value = 1;
         if (this.sequencerGain) source.connect(gain).connect(this.sequencerGain);
         else source.connect(gain).connect(ctx.destination);
-        source.start(scheduleTime, 0, note.duration);
+        // Fade out the sample after its end
+        const fadeOutDuration = 0.05; // seconds
+        source.start(scheduleTime, 0, note.duration + fadeOutDuration);
+        // source.stop(note.duration + fadeOutDuration);
+        // at scheduleTime + note.duration, start fading out
+        gain.gain.setValueAtTime(1, scheduleTime);
+        gain.gain.linearRampToValueAtTime(0, scheduleTime + note.duration + fadeOutDuration);
 
         // Map by note ID AND loop index so notes wrapping the loop boundary don't block themselves
         const activeKey = `${note.id}:${loopIndex}`;
@@ -401,3 +407,4 @@ export class AudioEngine {
 
     }
 }
+

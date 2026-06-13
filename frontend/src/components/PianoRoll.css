@@ -1,6 +1,6 @@
 .piano-roll {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     height: 100%;
     background: #0f172a;
     border: 1px solid rgba(148, 163, 184, 0.1);
@@ -15,6 +15,41 @@
     background: rgba(15, 23, 42, 0.5);
 }
 
+
+.clear-notes-button-container {
+    width: 5%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.clear-notes-button {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.04);
+    color: #e6eef8;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 4px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.clear-all-notes-button {
+    margin-bottom: 4px;
+}
+
+.clear-track-notes-button {
+    margin-top: 4px;
+}
+
+.piano-roll-tracks-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border-right: 1px solid rgba(148, 163, 184, 0.1);
+    background: rgba(15, 23, 42, 0.5);
+}
+
 .piano-roll-timeline {
     flex: 1;
     position: relative;
@@ -22,6 +57,7 @@
 }
 
 .piano-roll-time-marker {
+    flex: 1;
     position: absolute;
     top: 0;
     font-size: 0.75rem;
