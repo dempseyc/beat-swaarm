@@ -46,7 +46,7 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
 
         if (startTime >= 0 && startTime < loopLength) {
             const snapped = snapToGrid(startTime, activeQuantizeDenom, true);
-            const newNotes = addNote(notes, trackId, snapped, 2 / activeQuantizeDenom || 0.5);
+            const newNotes = addNote(notes, trackId, snapped, activeQuantizeDenom > 0 ? 2 / activeQuantizeDenom : 0.5);
             onNotesChange(newNotes);
         }
     };
@@ -157,7 +157,7 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
                 >
                     X
                 </button>
-                {TRACK_IDS.map((trackId) => (
+                {TRACK_IDS.reverse().map((trackId) => (
                     <button
                         key={trackId}
                         className="clear-notes-button clear-track-notes-button"

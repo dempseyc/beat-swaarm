@@ -16,13 +16,13 @@ const KIT_SAMPLES = {
 
   haand: ['HAAND-hard.wav', 'HAAND-right.wav', 'HAAND-left.wav', 'HAAND-tap.wav'],
   bipp: ['BIPP-accent.wav', 'BIPP-right.wav', 'BIPP-left.wav', 'BIPP-tap.wav'],
-  blokk: ['BLOKK-high.wav', 'BLOKK-midhigh.wav', 'BLOKK-midlow.wav', 'BLOKK-low.wav'],
-  boingg: ['BOINGG-accent.wav', 'BOINGG-right.wav', 'BOINGG-left.wav', 'BOINGG-low.wav'],
-  piaano: ['PIAANO-high.wav', 'PIAANO-highright.wav', 'PIAANO-lowleft.wav', 'PIAANO-low.wav'],
+  blokk: ['BLOKK-low.wav', 'BLOKK-midlow.wav', 'BLOKK-midhigh.wav', 'BLOKK-high.wav'],
+  boingg: ['BOINGG-accent.wav', 'BOINGG-right.wav', 'BOINGG-left.wav', 'BOINGG-tap.wav'],
+  piaano: ['PIAANO-low.wav', 'PIAANO-lowleft.wav', 'PIAANO-highright.wav', 'PIAANO-high.wav'],
   pandaa: ['SYNCOR_PANDAA.wav'],
   skelaa: ['SYNCOR_SKELAA.wav'],
   thumpp: ['THUMPP-hard.wav', 'THUMPP-left.wav', 'THUMPP-right.wav', 'THUMPP-tap.wav'],
-  pllluk: ['PLLLUK-high.wav', 'PLLLUK-midhigh.wav', 'PLLLUK-midlow.wav', 'PLLLUK-low.wav'],
+  pllluk: ['PLLLUK-low.wav', 'PLLLUK-midlow.wav', 'PLLLUK-midhigh.wav', 'PLLLUK-high.wav'],
 } as const;
 
 type KitName = keyof typeof KIT_SAMPLES;
@@ -94,6 +94,7 @@ function App() {
         console.error('WebSocket Error', e);
       }
     };
+
     engine.start(); // Start immediately and run continuously
     audioEngineRef.current = engine;
 
@@ -190,14 +191,14 @@ function App() {
     }
   };
 
-  const handlePadTrigger = (trackId: TrackId) => {
+  const handlePadTrigger = (trackId: TrackId, recording: boolean) => {
     if (!audioEngineRef.current) return;
 
     // Play immediately
     audioEngineRef.current.playNoteImmediate(trackId, 0.25);
 
-    // Add to sequencer
-    setNotes(prevNotes => {
+    // Add to sequencer if recording
+    recording && setNotes(prevNotes => {
       let startTime = playheadTime;
       if (quantizeEnabled) {
         startTime = snapToGrid(startTime, quantizeDenom, bpm, loopLength, true);

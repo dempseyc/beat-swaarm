@@ -4,19 +4,23 @@ import { TRACK_COLORS } from '../constants';
 
 
 interface DrumPadProps {
-    onPadTrigger: (trackId: TrackId) => void;
+    onPadTrigger: (trackId: TrackId, recording: boolean) => void;
 }
 
 
 
 export function DrumPad({ onPadTrigger }: DrumPadProps) {
+    const [recording, setRecording] = React.useState(true);
     const handleTrigger = (e: React.MouseEvent | React.TouchEvent, trackId: TrackId) => {
         e.preventDefault();
-        onPadTrigger(trackId);
+        onPadTrigger(trackId, recording);
     };
 
     return (
         <div className="drum-pad-container" style={{ display: 'flex', width: '100%', height: '150px', marginTop: '20px', gap: '10px' }}>
+            <button style={{ backgroundColor: recording ? '#e04f5f' : '#ccc', border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }} onClick={() => setRecording(!recording)}>
+                REC
+            </button>
             <button
                 className="drum-pad accent"
                 onMouseDown={e => handleTrigger(e, 0)}

@@ -1,6 +1,6 @@
 export type TrackId = 0 | 1 | 2 | 3;
 
-export const TRACK_IDS: TrackId[] = [0, 1, 2, 3];
+export const TRACK_IDS: TrackId[] = [3, 2, 1, 0];
 
 export interface Note {
     id: string;
