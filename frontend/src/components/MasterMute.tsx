@@ -16,9 +16,8 @@ export function MasterMute({ isMuted, onToggleMute }: MasterMuteProps) {
                 onClick={onToggleMute}
             >
                 <div className="speaker-icon">
-                    {isMuted ? '\\0\\' : '/•/'}
+                    PLAY
                 </div>
-                <span>{isMuted ? 'Play' : 'Mute'}</span>
             </button>
         </div>
     );

@@ -19,8 +19,6 @@ const KIT_SAMPLES = {
   blokk: ['BLOKK-low.wav', 'BLOKK-midlow.wav', 'BLOKK-midhigh.wav', 'BLOKK-high.wav'],
   boingg: ['BOINGG-accent.wav', 'BOINGG-right.wav', 'BOINGG-left.wav', 'BOINGG-tap.wav'],
   piaano: ['PIAANO-low.wav', 'PIAANO-lowleft.wav', 'PIAANO-highright.wav', 'PIAANO-high.wav'],
-  pandaa: ['SYNCOR_PANDAA.wav'],
-  skelaa: ['SYNCOR_SKELAA.wav'],
   thumpp: ['THUMPP-hard.wav', 'THUMPP-left.wav', 'THUMPP-right.wav', 'THUMPP-tap.wav'],
   pllluk: ['PLLLUK-low.wav', 'PLLLUK-midlow.wav', 'PLLLUK-midhigh.wav', 'PLLLUK-high.wav'],
 } as const;
@@ -30,8 +28,6 @@ type KitName = keyof typeof KIT_SAMPLES;
 const KIT_LABELS: Record<KitName, string> = {
   haand: 'HAAND',
   piaano: 'PIAANO',
-  pandaa: 'PANDAA',
-  skelaa: 'SKELAA',
   thumpp: 'THUMPP',
   pllluk: 'PLLLUK',
   bipp: 'BIPP',
@@ -141,7 +137,9 @@ function App() {
     if (isMuted) {
       engine.setMuted(false);
       setIsMuted(false);
-      engine.start();
+      if (!engine.isTransportRunning) {
+        engine.start();
+      }
     } else {
       engine.setMuted(true);
       setIsMuted(true);
@@ -195,10 +193,13 @@ function App() {
     if (!audioEngineRef.current) return;
 
     // Play immediately
+    if (audioEngineRef.current.isTransportRunning) {
+      audioEngineRef.current.start();
+    }
     audioEngineRef.current.playNoteImmediate(trackId, 0.25);
 
     // Add to sequencer if recording
-    recording && setNotes(prevNotes => {
+    recording && !isMuted && setNotes(prevNotes => {
       let startTime = playheadTime;
       if (quantizeEnabled) {
         startTime = snapToGrid(startTime, quantizeDenom, bpm, loopLength, true);
@@ -288,7 +289,7 @@ function App() {
             bpm={bpm}
             quantizeDenom={quantizeEnabled ? quantizeDenom : 0}
           />
-          <DrumPad onPadTrigger={handlePadTrigger} />
+          <DrumPad onPadTrigger={handlePadTrigger} isMuted={isMuted} />
         </section>
 
         <footer className="app-footer">

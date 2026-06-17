@@ -15,7 +15,7 @@ export class AudioEngine {
     };
     private kitDetune: number = 0;
     private sampleLoadPromises: Partial<Record<TrackId, Promise<void>>> = {};
-    private isTransportRunning = false;
+    public isTransportRunning = false;
     private isMuted = true;
     private playheadTime = 0;
     private startTime = 0;
@@ -31,6 +31,7 @@ export class AudioEngine {
     // Gains
     private masterGain: GainNode | null = null;
     private sequencerGain: GainNode | null = null;
+    private drumPadGain: GainNode | null = null;
     private mainGain: GainNode | null = null;
     private nextMainGain: GainNode | null = null;
     private m1Gain: GainNode | null = null;
@@ -58,11 +59,15 @@ export class AudioEngine {
             // connect as parent of all gains to masterGain for unified mute control
             this.masterGain = this.audioContext.createGain();
             this.masterGain.connect(this.audioContext.destination);
-            this.masterGain.gain.value = 1;
+            this.masterGain.gain.value = 0;
 
             this.sequencerGain = this.audioContext.createGain();
             this.sequencerGain.connect(this.masterGain);
             this.sequencerGain.gain.value = 1;
+
+            this.drumPadGain = this.audioContext.createGain();
+            this.drumPadGain.connect(this.audioContext.destination);
+            this.drumPadGain.gain.value = 1;
 
             this.mainGain = this.audioContext.createGain();
             this.mainGain.connect(this.masterGain);
@@ -139,8 +144,9 @@ export class AudioEngine {
 
     setMuted(muted: boolean) {
         this.isMuted = muted;
-        if (this.masterGain) {
-            this.masterGain.gain.value = muted ? 0 : 1; // is
+        if (this.masterGain && this.sequencerGain) {
+            this.masterGain.gain.value = muted ? 0 : 1;
+            this.sequencerGain.gain.value = muted ? 0 : 1;
         }
     }
 
@@ -360,7 +366,8 @@ export class AudioEngine {
     }
 
     playNoteImmediate(trackId: TrackId, duration: number) {
-        if (!this.audioContext || this.audioContext.state === 'suspended') return;
+        console.log(this.audioContext?.state);
+        if (!this.audioContext) return;
         const buffer = this.sampleBuffers[trackId];
         if (!buffer) return;
 
@@ -370,8 +377,8 @@ export class AudioEngine {
 
         const gain = this.audioContext.createGain();
         gain.gain.value = 1;
-        if (this.masterGain) source.connect(gain).connect(this.masterGain);
-        else source.connect(gain).connect(this.audioContext.destination);
+        if (this.drumPadGain) source.connect(gain).connect(this.drumPadGain);
+        // else source.connect(gain).connect(this.audioContext.destination);
         source.start(0, 0, duration);
     }
 
