@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface MixerProps {
     onSequencerVolumeChange: (vol: number) => void;
@@ -12,30 +12,6 @@ export function Mixer({ onSequencerVolumeChange, onMainVolumeChange, onM1VolumeC
     const [mainVol, setMainVol] = useState(0.6);
     const [metror1Vol, setMetror1Vol] = useState(0.6);
     const [metror2Vol, setMetror2Vol] = useState(0.6);
-
-    const [mainUrl, setMainUrl] = useState<string | null>(null);
-
-    const mainAudioRef = useRef<HTMLAudioElement | null>(null);
-    const m1AudioRef = useRef<HTMLAudioElement | null>(null);
-    const m2AudioRef = useRef<HTMLAudioElement | null>(null);
-
-    // Setup websocket for main loop updates
-    useEffect(() => {
-        const ws = new WebSocket('ws://localhost:4000');
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'main-loop-updated') {
-                    console.log('Main loop updated', data.url);
-                    // Add timestamp to bypass cache
-                    setMainUrl(`${data.url}?t=${data.timestamp}`);
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        };
-        return () => ws.close();
-    }, []);
 
     useEffect(() => {
         onSequencerVolumeChange(seqVol);

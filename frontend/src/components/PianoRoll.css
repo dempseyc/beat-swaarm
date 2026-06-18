@@ -148,7 +148,7 @@
     box-shadow: 0 0 10px rgba(248, 113, 113, 0.5);
 }
 
-.piano-roll-toolbar {
+.sequencer-toolbar {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -158,11 +158,11 @@
     color: #cbd5e1;
 }
 
-.piano-roll-toolbar label {
+.sequencer-toolbar label {
     font-size: 0.8rem;
 }
 
-.piano-roll-toolbar select {
+.sequencer-toolbar select {
     background: rgba(255, 255, 255, 0.04);
     color: #e6eef8;
     border: 1px solid rgba(255, 255, 255, 0.06);

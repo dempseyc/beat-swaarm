@@ -5,12 +5,16 @@ import { PianoRoll } from './components/PianoRoll';
 import { MasterMute } from './components/MasterMute';
 import { QuantizeControl } from './components/QuantizeControl';
 import { Mixer } from './components/Mixer';
+import { SequencerControl } from './components/SequencerControl';
 import { AudioEngine } from './audio/audioEngine';
 import { DrumPad } from './components/DrumPad';
 import { addNote, createInitialSequencerState } from './state/sequencer';
 import { snapToGrid } from './utils';
 import { Note, TrackId } from './types';
 import axios from 'axios';
+import Metror1Control from './components/Metror1Control';
+import MainControl from './components/MainControl';
+import Metror2Control from './components/Metror2Control';
 
 const KIT_SAMPLES = {
 
@@ -224,59 +228,68 @@ function App() {
             <p className="app-tag">BEATSWAARM</p>
             <p className="app-copy">Double-click to add notes, drag to resize, double-click again to delete. Load a kit of samples to sequence.</p>
           </div>
-          <div className="status-panel">
-            <div className="status-badge">BPM {bpm}</div>
-            <div className="status-badge">{timeDisplay}</div>
-            <div className="status-badge">Clients: {numClients}</div>
-          </div>
-          <MasterMute isMuted={isMuted} onToggleMute={handleToggleMute} />
-          <button
-            className="render-button"
-            onClick={handleRenderAndUpload}
-            disabled={isRendering}
-            style={{ marginLeft: '10px', padding: '0 15px', background: '#e04f5f', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            {isRendering ? '.....' : 'Transmit'}
-          </button>
-          <div className="keep-going-control" style={{ marginLeft: '15px', display: 'flex', alignItems: 'center' }}>
-            <input
-              type="checkbox"
-              id="keep-going-check"
-              checked={keepGoing}
-              onChange={e => setKeepGoing(e.target.checked)}
-              style={{ cursor: 'pointer' }}
-            />
-            <label htmlFor="keep-going-check" style={{ marginLeft: '5px', color: '#fff', fontSize: '0.8rem', cursor: 'pointer' }}>RE-TRANSMIT</label>
-          </div>
         </header>
 
-        <section className="controls-row">
-          <div className="piano-roll-toolbar" style={{ marginBottom: '10px' }}>
-            <div className="kit-selector">
-              <label htmlFor="kit-select">Kit</label>
-              <select
-                id="kit-select"
-                value={selectedKit}
-                onChange={e => setSelectedKit(e.target.value as KitName)}
-              >
-                {kitOptions.map(kit => (
-                  <option key={kit} value={kit}>
-                    {KIT_LABELS[kit]}
-                  </option>
-                ))}
-              </select>
-              <span className="kit-loading">{kitLoading ? 'Loading…' : ''}</span>
+        <section className="controls-toolbar" style={{ display: 'flex', gap: '20px', padding: '20px' }}>
+          <Metror1Control onM1VolumeChange={(vol) => {
+            if (audioEngineRef.current) {
+              audioEngineRef.current.setMetror1Volume(vol);
+            }
+          }} />
+          <div className="play-controls" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <MasterMute isMuted={isMuted} onToggleMute={handleToggleMute} />
+            <button
+              className="render-button"
+              onClick={handleRenderAndUpload}
+              disabled={isRendering}
+              style={{ padding: '0 15px', background: '#e04f5f', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              {isRendering ? '.....' : 'Transmit'}
+            </button>
+            <div className="keep-going-control" style={{ display: 'flex', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                id="keep-going-check-2"
+                checked={keepGoing}
+                onChange={e => setKeepGoing(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              <label htmlFor="keep-going-check-2" style={{ marginLeft: '5px', color: '#fff', fontSize: '0.8rem', cursor: 'pointer' }}>RE-TRANSMIT</label>
             </div>
-            <QuantizeControl
-              onToggle={(enabled) => setQuantizeEnabled(enabled)}
-              onChangeDenom={(denom) => setQuantizeDenom(denom)}
-            />
-            <Mixer
-              onSequencerVolumeChange={(vol) => audioEngineRef.current?.setSequencerVolume(vol)}
-              onMainVolumeChange={(vol) => audioEngineRef.current?.setMainVolume(vol)}
-              onM1VolumeChange={(vol) => audioEngineRef.current?.setMetror1Volume(vol)}
-              onM2VolumeChange={(vol) => audioEngineRef.current?.setMetror2Volume(vol)}
-            />
+            <MainControl onMainVolumeChange={(vol) => {
+              if (audioEngineRef.current) {
+                audioEngineRef.current.setMainVolume(vol);
+              }
+            }} />
+          </div>
+          <Metror2Control onM2VolumeChange={(vol) => {
+            if (audioEngineRef.current) {
+              audioEngineRef.current.setMetror2Volume(vol);
+            }
+          }} />
+        </section>
+
+
+        <section className="sequencer-toolbar" style={{ marginBottom: '10px' }}>
+
+          <QuantizeControl
+            onToggle={(enabled) => setQuantizeEnabled(enabled)}
+            onChangeDenom={(denom) => setQuantizeDenom(denom)}
+          />
+          <SequencerControl
+            onSequencerVolumeChange={(vol) => {
+              if (audioEngineRef.current) {
+                audioEngineRef.current.setSequencerVolume(vol);
+              }
+            }}
+            selectedKit={selectedKit}
+            onKitChange={setSelectedKit}
+          />
+          <div className="status-display" style={{ marginLeft: 'auto', color: '#fff', fontSize: '0.9rem' }}>
+            <div className='time-signature'>{'4/4'}</div>
+            <div className='bpm'>BPM: {bpm}</div>
+            <div className='swing'>Swing: 0.50</div>
+
           </div>
         </section>
 
@@ -296,7 +309,7 @@ function App() {
           <p>Audio Loop Generator and Universal Time Swarm Sync</p>
         </footer>
       </div>
-    </div>
+    </div >
   );
 }
 
