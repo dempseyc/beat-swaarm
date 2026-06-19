@@ -18,7 +18,7 @@ export function SequencerControl({ onSequencerVolumeChange, selectedKit, onKitCh
     }, [seqVol, onSequencerVolumeChange]);
 
     return (
-        <div className='sequencer-control' style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '20px', background: '#1a1a1a', borderRadius: '8px' }}>
+        <div className='control sequencer-control'>
             <KitSelector selectedKit={selectedKit} onKitChange={onKitChange} />
             <input
                 type="range"

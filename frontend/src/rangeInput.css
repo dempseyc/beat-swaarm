@@ -1,0 +1,39 @@
+/*********************************************************************************************/
+.mini-input {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    right: 5%;
+    width: 50%;
+    margin: 3px;
+    margin-top: -1%;
+    background-color: #0000;
+}
+
+.mini-input:focus {
+    outline: none;
+}
+
+.mini-input::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 12px;
+    cursor: pointer;
+    border-style: inset;
+    border-width: 2px;
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.mini-input::-webkit-slider-thumb {
+    border-style: outset;
+    border-width: 5px;
+    height: 11px;
+    width: 17px;
+    position: relative;
+    bottom: 1.5px;
+    border-radius: 3px;
+    background: #aaa;
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: 0.5px;
+}

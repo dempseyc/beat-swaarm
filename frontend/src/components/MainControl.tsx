@@ -3,9 +3,10 @@ import React, { useEffect, useState } from 'react';
 
 interface MainControlProps {
     onMainVolumeChange: (vol: number) => void;
+    playheadTime: number;
 }
 
-export function MainControl({ onMainVolumeChange }: MainControlProps) {
+export function MainControl({ onMainVolumeChange, playheadTime }: MainControlProps) {
     const [mainVol, setMainVol] = useState(0.6);
 
     useEffect(() => {
@@ -13,8 +14,9 @@ export function MainControl({ onMainVolumeChange }: MainControlProps) {
     }, [mainVol, onMainVolumeChange]);
 
     return (
-        <div className='mixer-channel' style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '20px', background: '#1a1a1a', borderRadius: '8px' }}>
-            <h4>Main Loop Volume</h4>
+        <div className='mixer-channel'>
+            <h1>{playheadTime.toFixed(2)}</h1>
+            <h4>Swarm</h4>
             <input
                 type="range"
                 min="0" max="1" step="0.01"

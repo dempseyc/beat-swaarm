@@ -11,10 +11,10 @@ export function Metror2Control({ onM2VolumeChange }: Metror2ControlProps) {
 
     useEffect(() => {
         onM2VolumeChange(metror2Vol);
-    }, [metror2Vol]);
+    }, [metror2Vol, onM2VolumeChange]);
 
     return (
-        <div className='metror-control metror2-control' style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '20px', background: '#1a1a1a', borderRadius: '8px' }}  >
+        <div className='control metror-control metror2-control' style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '20px', background: '#1a1a1a', borderRadius: '8px' }}  >
             <LightComponent triggerSignal={false} pulseLength={100} />
             <h4>Metror 02 Volume</h4>
             <input

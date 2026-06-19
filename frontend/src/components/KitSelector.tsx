@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styles from './KitSelector.module.css';
 
-export type KitName = 'haand' | 'piaano' | 'thumpp' | 'pllluk' | 'bipp' | 'blokk' | 'boingg';
+export type KitName = 'haand' | 'piaano' | 'thumpp' | 'pllluk' | 'bipp' | 'blokk' | 'boingg' | 'craigg';
 
 const KIT_LABELS: Record<KitName, string> = {
     haand: 'HAAND',
@@ -11,6 +11,7 @@ const KIT_LABELS: Record<KitName, string> = {
     bipp: 'BIPP',
     blokk: 'BLOKK',
     boingg: 'BOINGG',
+    craigg: '80CRAIGG',
 };
 
 interface KitSelectorProps {

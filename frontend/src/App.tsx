@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 // @ts-ignore
 import './App.css';
+// @ts-ignore -- allow side-effect import of CSS without type declarations
+import './rangeInput.css';
 import { PianoRoll } from './components/PianoRoll';
 import { MasterMute } from './components/MasterMute';
 import { QuantizeControl } from './components/QuantizeControl';
-import { Mixer } from './components/Mixer';
 import { SequencerControl } from './components/SequencerControl';
 import { AudioEngine } from './audio/audioEngine';
 import { DrumPad } from './components/DrumPad';
@@ -25,6 +26,7 @@ const KIT_SAMPLES = {
   piaano: ['PIAANO-low.wav', 'PIAANO-lowleft.wav', 'PIAANO-highright.wav', 'PIAANO-high.wav'],
   thumpp: ['THUMPP-hard.wav', 'THUMPP-left.wav', 'THUMPP-right.wav', 'THUMPP-tap.wav'],
   pllluk: ['PLLLUK-low.wav', 'PLLLUK-midlow.wav', 'PLLLUK-midhigh.wav', 'PLLLUK-high.wav'],
+  craigg: ['80CRAIGG-kick.wav', '80CRAIGG-snare.wav', '80CRAIGG-hhc.wav', '80CRAIGG-hho.wav'],
 } as const;
 
 type KitName = keyof typeof KIT_SAMPLES;
@@ -37,6 +39,7 @@ const KIT_LABELS: Record<KitName, string> = {
   bipp: 'BIPP',
   blokk: 'BLOKK',
   boingg: 'BOINGG',
+  craigg: '80CRAIGG',
 };
 
 const KIT_TRACKS = [0, 1, 2, 3] as TrackId[];
@@ -136,14 +139,15 @@ function App() {
 
   const handleToggleMute = () => {
     const engine = audioEngineRef.current;
-    if (!engine) return;
+    if (!engine) {
+      console.warn('Audio engine not initialized yet');
+      return;
+    }
 
     if (isMuted) {
       engine.setMuted(false);
       setIsMuted(false);
-      if (!engine.isTransportRunning) {
-        engine.start();
-      }
+      engine.start();
     } else {
       engine.setMuted(true);
       setIsMuted(true);
@@ -230,37 +234,34 @@ function App() {
           </div>
         </header>
 
-        <section className="controls-toolbar" style={{ display: 'flex', gap: '20px', padding: '20px' }}>
+        <section className="controls-toolbar">
           <Metror1Control onM1VolumeChange={(vol) => {
             if (audioEngineRef.current) {
               audioEngineRef.current.setMetror1Volume(vol);
             }
           }} />
-          <div className="play-controls" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <MasterMute isMuted={isMuted} onToggleMute={handleToggleMute} />
-            <button
-              className="render-button"
-              onClick={handleRenderAndUpload}
-              disabled={isRendering}
-              style={{ padding: '0 15px', background: '#e04f5f', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-            >
-              {isRendering ? '.....' : 'Transmit'}
-            </button>
-            <div className="keep-going-control" style={{ display: 'flex', alignItems: 'center' }}>
-              <input
-                type="checkbox"
-                id="keep-going-check-2"
-                checked={keepGoing}
-                onChange={e => setKeepGoing(e.target.checked)}
-                style={{ cursor: 'pointer' }}
-              />
-              <label htmlFor="keep-going-check-2" style={{ marginLeft: '5px', color: '#fff', fontSize: '0.8rem', cursor: 'pointer' }}>RE-TRANSMIT</label>
+          <div className="controls play-controls">
+            <div className='control transport-controls'>
+              <MasterMute isMuted={isMuted} onToggleMute={handleToggleMute} />
+              <button
+                className="render-button"
+                onClick={handleRenderAndUpload}
+                disabled={isRendering}
+
+              >
+                {isRendering ? '.....' : 'Transmit'}
+              </button>
+              <div className="keep-going-button">
+                <button onClick={() => setKeepGoing(!keepGoing)} className={keepGoing ? 'active' : ''}>
+                  REPT
+                </button>
+              </div>
             </div>
             <MainControl onMainVolumeChange={(vol) => {
               if (audioEngineRef.current) {
                 audioEngineRef.current.setMainVolume(vol);
               }
-            }} />
+            }} playheadTime={playheadTime} />
           </div>
           <Metror2Control onM2VolumeChange={(vol) => {
             if (audioEngineRef.current) {
@@ -270,7 +271,7 @@ function App() {
         </section>
 
 
-        <section className="sequencer-toolbar" style={{ marginBottom: '10px' }}>
+        <section className="controls-toolbar">
 
           <QuantizeControl
             onToggle={(enabled) => setQuantizeEnabled(enabled)}
@@ -285,7 +286,7 @@ function App() {
             selectedKit={selectedKit}
             onKitChange={setSelectedKit}
           />
-          <div className="status-display" style={{ marginLeft: 'auto', color: '#fff', fontSize: '0.9rem' }}>
+          <div className="control status-display" >
             <div className='time-signature'>{'4/4'}</div>
             <div className='bpm'>BPM: {bpm}</div>
             <div className='swing'>Swing: 0.50</div>
@@ -309,8 +310,7 @@ function App() {
           <p>Audio Loop Generator and Universal Time Swarm Sync</p>
         </footer>
       </div>
-    </div >
-  );
+    </div>);
 }
 
 export default App;

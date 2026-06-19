@@ -1,3 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Geo:ital@0;1&display=swap');
+
+body,
+label,
+button {
+  font-family: 'Geo', sans-serif;
+}
+
 :root {
   color-scheme: dark;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -72,12 +80,51 @@ h1 {
   font-weight: 700;
 }
 
-.controls-row {
+.controls-toolbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
+  flex-direction: row;
   align-items: center;
-  margin-bottom: 18px;
+  width: 100%;
+}
+
+.control {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.transport-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.control-button {
+  display: inline-flex;
+  align-items: center;
+}
+
+.control-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.quantize-controls {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.quantize-enable-checkbox {
+  margin-left: 5px;
+}
+
+.quantize-denom-select {
+  margin-left: 10px;
+  width: 60px;
 }
 
 .kit-selector {

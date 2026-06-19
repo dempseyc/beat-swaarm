@@ -85,8 +85,8 @@ export class AudioEngine {
             this.m2Gain.connect(this.masterGain);
             this.m2Gain.gain.value = 1;
 
-            this.loadBuffer('/audio/native-kits/metrors/120_SYNCOR_PANDAA.wav').then(b => this.metror1Buffer = b).catch(e => console.warn("Missing metror1", e));
-            this.loadBuffer('/audio/native-kits/metrors/120_TACTOR_THUMPP_2.wav').then(b => this.metror2Buffer = b).catch(e => console.warn("Missing metror2", e));
+            this.loadBuffer('/audio/metrors/120_SYNCOR_PANDAA.wav').then(b => this.metror1Buffer = b).catch(e => console.warn("Missing metror1", e));
+            this.loadBuffer('/audio/metrors/120_TACTOR_THUMPP_2.wav').then(b => this.metror2Buffer = b).catch(e => console.warn("Missing metror2", e));
         }
     }
 
@@ -209,6 +209,8 @@ export class AudioEngine {
         if (!this.audioContext) return;
         console.log(this.audioContext.state);
         if (this.audioContext.state === 'suspended') this.audioContext.resume();
+        console.log(this.audioContext.state);
+
         this.isTransportRunning = true;
 
         const nowMs = Date.now();

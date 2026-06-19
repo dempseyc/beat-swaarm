@@ -15,23 +15,24 @@ export function QuantizeControl({ onToggle, onChangeDenom }: QuantizeControlProp
         onToggle(enabled);
     }, [enabled, onToggle]);
     return (
-        <div className="quantize-controls">
+        <div className="control quantize-controls">
             <label
                 htmlFor="quantize-enable"
-                style={{ color: "#fff", fontSize: "0.8rem", marginRight: 5 }}
+                className="quantize-enable-label control-label"
             >
+                Q:
                 <input
                     type="checkbox"
                     id="quantize-enable"
+                    className="quantize-enable-checkbox"
                     checked={enabled}
                     onChange={setEnabled.bind(null, !enabled)}
-                    style={{ marginRight: 5 }}
                 />
-                Quantize
             </label>
 
             <select
                 id="quantize-select"
+                className="quantize-denom-select"
                 value={denom}
                 onChange={(e) => setDenom(Number(e.target.value))}
                 disabled={!enabled}
