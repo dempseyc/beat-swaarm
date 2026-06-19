@@ -9,7 +9,7 @@ import { QuantizeControl } from './components/QuantizeControl';
 import { SequencerControl } from './components/SequencerControl';
 import { AudioEngine } from './audio/audioEngine';
 import { DrumPad } from './components/DrumPad';
-import { addNote, createInitialSequencerState } from './state/sequencer';
+import { addNote, createInitialSequencerState, deleteNote } from './state/sequencer';
 import { snapToGrid } from './utils';
 import { Note, TrackId } from './types';
 import axios from 'axios';
@@ -57,6 +57,7 @@ function App() {
   const initialState = initialStateRef.current;
   const [notes, setNotes] = useState(initialState.notes);
   const bpm = initialState.bpm;
+  const [epoch, setEpoch] = useState(initialState.epoch);
   const [numClients, setNumClients] = useState(1);
   const [isMuted, setIsMuted] = useState(true);
   const [playheadTime, setPlayheadTime] = useState(initialState.playheadTime);
@@ -69,9 +70,12 @@ function App() {
   const [keepGoing, setKeepGoing] = useState(false);
   const lastPlayheadTimeRef = useRef(0);
   const loopCounterRef = useRef(0);
+  const [overwrite, setOverwrite] = useState(false);
+  const [punchtime, setPunchtime] = useState(0);
 
   const [quantizeDenom, setQuantizeDenom] = useState<number>(4); // default 1/4 note
   const [quantizeEnabled, setQuantizeEnabled] = useState<boolean>(true);
+  const deletedNoteIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const engine = new AudioEngine();
@@ -87,11 +91,16 @@ function App() {
         setNumClients(data.num_clients / 2); // hack unknown why backend count is doubled, maybe creates additional connection after handshake?
         if (data.type === 'server-time') {
           engine.setServerSync(data.epoch, data.timestamp);
+          setEpoch(data.epochCount);
           // Store client ID for uploads
           (window as any).clientId = data.clientId;
         } else if (data.type === 'main-loop-updated') {
+          setEpoch(data.epochCount);
+
           engine.loadNextMainLoop(`${data.url}?t=${data.timestamp}`);
           console.log('Received main loop update from server:', data);// hack unknown why backend count is doubled, maybe creates additional connection after handshake?
+        } else if (data.type === 'epoch-sync') {
+          setEpoch(data.epochCount);
         }
       } catch (e) {
         console.error('WebSocket Error', e);
@@ -106,6 +115,51 @@ function App() {
       engine.stop();
     };
   }, [initialState]);
+
+  // Toggle overwrite and set punch-in point at current playhead position
+  const handleOverwriteToggle = () => {
+    setPunchtime(playheadTime);
+    setOverwrite(!overwrite);
+  };
+
+  // Mark notes as invalid when overwrite is toggled on, re-validate when toggled off
+  // at time 0, reset punchtime
+  useEffect(() => {
+    setPunchtime(0);
+    setNotes(prevNotes =>
+      prevNotes.map(n => ({
+        ...n,
+        valid: overwrite && n.startTime >= punchtime ? false : true
+      }))
+    );
+    if (!overwrite) {
+      deletedNoteIdsRef.current.clear();
+    }
+  }, [epoch])
+
+  useEffect(() => {
+    console.log('punchtime', punchtime)
+    setNotes(prevNotes =>
+      prevNotes.map(n => ({
+        ...n,
+        valid: overwrite && n.startTime >= punchtime ? false : true
+      }))
+    );
+    if (!overwrite) {
+      deletedNoteIdsRef.current.clear();
+    }
+  }, [overwrite, punchtime]);
+
+
+  // Delete invalid notes as playhead passes them
+  useEffect(() => {
+    notes.forEach(n => {
+      if (!n.valid && n.startTime <= playheadTime && !deletedNoteIdsRef.current.has(n.id)) {
+        deletedNoteIdsRef.current.add(n.id);
+        setNotes(prevNotes => prevNotes.filter(note => note.id !== n.id));
+      }
+    });
+  }, [playheadTime, notes]);
 
   useEffect(() => {
     console.log('Selected kit changed:', selectedKit);
@@ -198,6 +252,7 @@ function App() {
   };
 
   const handlePadTrigger = (trackId: TrackId, recording: boolean) => {
+    console.log("pad trigger", Date.now())
     if (!audioEngineRef.current) return;
 
     // Play immediately
@@ -302,8 +357,9 @@ function App() {
             onNotesChange={handleNotesChange}
             bpm={bpm}
             quantizeDenom={quantizeEnabled ? quantizeDenom : 0}
+            overwrite={overwrite}
           />
-          <DrumPad onPadTrigger={handlePadTrigger} isMuted={isMuted} />
+          <DrumPad onPadTrigger={handlePadTrigger} isMuted={isMuted} overwrite={overwrite} handleOverwriteToggle={handleOverwriteToggle} />
         </section>
 
         <footer className="app-footer">

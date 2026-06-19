@@ -7,6 +7,7 @@ export interface Note {
     trackId: TrackId;
     startTime: number; // in seconds
     duration: number; // in seconds
+    valid: boolean;
 }
 
 export interface SequencerState {

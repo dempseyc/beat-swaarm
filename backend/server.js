@@ -100,20 +100,22 @@ app.post('/upload', upload.single('loop'), (req, res) => {
     res.json({ success: true, filename: req.file.filename });
 });
 
-function getClientVolume(clientId) {
-    const loop = clientLoops.get(clientId);
-    if (!loop) return 0;
+function epochCount() {
+    return (Math.ceil((Date.now() - START_TIME) / LOOP_DURATION));
+}
 
+function getClientVolume(clientId) {
+    const loop = clientLoops.get(clientId)
+    if (!loop) return 0;
     const now = Date.now();
     const age = now - loop.lastUpdate;
-    const epochCount = age / LOOP_DURATION;
-
-    if (epochCount <= 2) return 1.0;
-    if (epochCount >= 6) return 0;
+    const epochAge = age / LOOP_DURATION;
+    if (epochAge <= 2) return 1.0;
+    if (epochAge >= 6) return 0;
 
     // Linear fade from 1.0 to 0.0 between epoch 2 and 6
     // volume = 1.0 - (current_epoch - start_fade_epoch) / fade_duration_epochs
-    const volume = 1.0 - (epochCount - 2) / (6 - 2);
+    const volume = 1.0 - (epochAge - 2) / (6 - 2);
     return Math.max(0, volume);
 }
 
@@ -185,7 +187,8 @@ function broadcastNewMain() {
         type: 'main-loop-updated',
         timestamp: Date.now(),
         url: `http://localhost:${PORT}/public/main.wav`,
-        num_clients: `${wss.clients.size || 0}`
+        num_clients: `${wss.clients.size || 0}`,
+        epochCount: epochCount()
     });
 
     let i = 0;
@@ -204,6 +207,7 @@ wss.on('connection', ws => {
         type: 'server-time',
         timestamp: Date.now(),
         epoch: START_TIME,
+        epochCount: epochCount(),
         clientId: clientId,
         num_clients: `${wss.clients.size || 0}`
     }));
@@ -223,6 +227,7 @@ wss.on('connection', ws => {
                 loopId: payload.loopId,
                 timestamp: Date.now(),
                 meta: payload.meta || {},
+                epochCount: epochCount(),
                 num_clients: `${wss.clients.size || 0}`
             });
 
@@ -248,8 +253,30 @@ wss.on('connection', ws => {
     });
 });
 
-// Periodic re-mix to handle fades
+// Track the last broadcast epoch to avoid duplicates
+let lastBroadcastedEpoch = 0;
+
+// Periodic re-mix to handle fades and broadcast epoch sync
 setInterval(() => {
+    const currentEpoch = epochCount();
+    // Broadcast epoch sync when a new epoch is reached
+    if (currentEpoch > lastBroadcastedEpoch) {
+        lastBroadcastedEpoch = currentEpoch;
+        const epochSyncMessage = JSON.stringify({
+            type: 'epoch-sync',
+            epochCount: currentEpoch,
+            timestamp: Date.now(),
+            num_clients: `${wss.clients.size || 0}`
+        });
+
+        wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(epochSyncMessage);
+            }
+        });
+        console.log(`Broadcasting epoch sync: epoch ${currentEpoch}`);
+    }
+
     if (clientLoops.size > 0) {
         mixMainLoop();
     }

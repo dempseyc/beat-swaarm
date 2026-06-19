@@ -6,11 +6,13 @@ import { TRACK_COLORS } from '../constants';
 interface DrumPadProps {
     onPadTrigger: (trackId: TrackId, recording: boolean) => void;
     isMuted?: boolean;
+    overwrite?: boolean;
+    handleOverwriteToggle: () => void;
 }
 
 
 
-export function DrumPad({ onPadTrigger, isMuted }: DrumPadProps) {
+export function DrumPad({ onPadTrigger, isMuted, overwrite = false, handleOverwriteToggle }: DrumPadProps) {
     const [recording, setRecording] = React.useState(true);
     const handleTrigger = (e: React.MouseEvent | React.TouchEvent, trackId: TrackId) => {
         e.preventDefault();
@@ -19,9 +21,14 @@ export function DrumPad({ onPadTrigger, isMuted }: DrumPadProps) {
 
     return (
         <div className="drum-pad-container" style={{ display: 'flex', width: '100%', height: '150px', marginTop: '20px', gap: '10px' }}>
-            <button style={{ color: recording && !isMuted ? '#e04f5f' : '#222', border: 'none', borderRadius: '8px', cursor: 'pointer', backgroundColor: 'white', fontWeight: 'bold' }} onClick={() => setRecording(!recording)}>
-                REC
-            </button>
+            <div className="drum-pad-controls" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button style={{ color: recording && !isMuted ? '#e04f5f' : '#222', border: 'none', borderRadius: '8px', cursor: 'pointer', backgroundColor: 'white', fontWeight: 'bold' }} onClick={() => setRecording(!recording)}>
+                    REC+
+                </button>
+                <button style={{ color: overwrite && !isMuted ? '#e04f5f' : '#222', border: 'none', borderRadius: '8px', cursor: 'pointer', backgroundColor: 'white', fontWeight: 'bold' }} onClick={handleOverwriteToggle}>
+                    OVER
+                </button>
+            </div>
             <button
                 className="drum-pad accent"
                 onMouseDown={e => handleTrigger(e, 0)}

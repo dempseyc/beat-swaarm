@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Note, TrackId, TRACK_IDS } from '../types';
 import { addNote, deleteNote, updateNote } from '../state/sequencer';
 import { TRACK_COLORS } from '../constants';
@@ -13,6 +13,7 @@ interface PianoRollProps {
     onNotesChange: (notes: Note[]) => void;
     bpm: number;
     quantizeDenom?: number;
+    overwrite?: boolean;
 }
 
 interface DragState {
@@ -23,7 +24,8 @@ interface DragState {
     originalDuration: number;
 }
 
-export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm, quantizeDenom = 0 }: PianoRollProps) {
+export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm, quantizeDenom = 0, overwrite }: PianoRollProps) {
+    const [playHeadErase, setPlayheadErase] = useState(overwrite);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [dragState, setDragState] = useState<DragState>({
         type: null,
