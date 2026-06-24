@@ -14,10 +14,11 @@ export function Metror2Control({ onM2VolumeChange }: Metror2ControlProps) {
     }, [metror2Vol, onM2VolumeChange]);
 
     return (
-        <div className='control metror-control metror2-control' style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '20px', background: '#1a1a1a', borderRadius: '8px' }}  >
+        <div className='controls metror-control metror2-control'  >
             <LightComponent triggerSignal={false} pulseLength={100} />
-            <h4>Metror 02 Volume</h4>
+            <h4>TACTOR</h4>
             <input
+                className='mini-input'
                 type="range"
                 min="0" max="1" step="0.01"
                 value={metror2Vol}

@@ -170,23 +170,19 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
                 ))}
             </div>
             <div className="piano-roll-tracks-container">
-                <div className="piano-roll-header">
-
-                    <div className="piano-roll-timeline">
-                        {Array.from({ length: 9 }).map((_, i) => (
-                            <div key={i} className="piano-roll-time-marker" style={{ left: `${(i / 8) * 100}%` }}>
+                <div className="piano-roll-tracks">
+                    <div className="piano-roll-track-row piano-roll-timeline">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <div key={i} className="piano-roll-time-marker" style={{ left: `${(i / 4) * 100}%` }}>
                                 {i + 1}
                             </div>
                         ))}
                     </div>
-                </div>
 
-                <div className="piano-roll-tracks">
                     {TRACK_IDS.map(trackId => (
                         <div
                             key={trackId}
                             className="piano-roll-track-row"
-                            style={{ height: `${100 / TRACK_IDS.length}%` }}
                             onDoubleClick={e => handleDoubleClick(e, trackId)}
                         >
                             <div

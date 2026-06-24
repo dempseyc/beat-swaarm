@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Geo:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geo:ital@0;1&family=Sono:wght,MONO@200..800,1&display=swap');
 
 body,
 label,
@@ -10,46 +10,48 @@ button {
   color-scheme: dark;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 16px;
-  background-color: #07070c;
   color: #e2e8f0;
+  width: 100vw;
 }
 
+html,
 body {
-  margin: 0;
+  background-color: #bbbbbb;
   min-height: 100vh;
-  background: radial-gradient(circle at top, rgba(124, 58, 237, 0.18), transparent 35%),
-    linear-gradient(180deg, #09090b 0%, #0f172a 100%);
+  min-width: 100vw;
+  margin: 0;
+  padding: 0;
 }
 
 .App {
-  min-height: 100vh;
-  padding: 24px;
+  min-width: 100%;
+  min-height: 100%;
+  margin: 0 auto;
 }
 
 .app-shell {
+  padding-left: 4px;
   max-width: 1100px;
+  height: 100vh;
+  width: 100%;
   margin: 0 auto;
-  padding: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  border-radius: 24px;
-  background: rgba(15, 23, 42, 0.86);
-  box-shadow: 0 20px 80px rgba(15, 23, 42, 0.35);
+  background: #bbbbbb;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-header {
   display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  align-items: flex-start;
-  margin-bottom: 24px;
+  align-items: center;
+  justify-content: center;
 }
 
 .app-tag {
   margin: 0;
-  font-size: 3rem;
-  letter-spacing: 0.2em;
+  font-size: 10vw;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: #a5b4fc;
+  color: #000;
 }
 
 h1 {
@@ -58,20 +60,25 @@ h1 {
   line-height: 1.05;
 }
 
+h4 {
+  margin: 0;
+  padding: 0;
+  font-size: 2rem;
+}
+
 .app-copy {
   margin: 0;
   max-width: 46rem;
-  color: #cbd5e1;
+  color: #000;
 }
 
 .status-panel {
   width: 30%;
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
 .status-badge {
+  font-family: 'Sono', monospace;
   width: 100%;
   padding: 10px 16px;
   border-radius: 999px;
@@ -81,10 +88,25 @@ h1 {
 }
 
 .controls-toolbar {
+  border-width: 15px;
+  border-style: inset;
   display: flex;
   flex-direction: row;
   align-items: center;
-  width: 100%;
+  justify-content: center;
+}
+
+.sequencer-controls-toolbar {
+  border-style: outset;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
 }
 
 .control {
@@ -94,15 +116,47 @@ h1 {
   align-items: center;
 }
 
+
 .transport-controls {
+  flex: 0;
   display: flex;
   flex-direction: row;
   align-items: center;
+  gap: 0.25rem;
+}
+
+.transport-controls h1 {
+  font-family: 'Sono', monospace;
+}
+
+.data-text {
+  font-family: 'Sono', monospace;
+  font-size: 0.8rem;
 }
 
 .control-button {
+  font-size: 1.4rem;
+  line-height: 1.5rem;
+  height: 2.2rem;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex: 33%;
+  background-color: #bbb;
+  color: #fff;
+  border-style: solid;
+  border-radius: 10px;
+  border-width: 5px;
+}
+
+
+.master-mute-button {
+  animation: glow 2s linear 0s infinite;
+}
+
+.control-button.active {
+  background-color: #fff;
+  color: #999;
 }
 
 .control-label {
@@ -114,36 +168,59 @@ h1 {
 .quantize-controls {
   display: flex;
   flex: 1;
-  flex-direction: row;
+  flex-direction: column;
   justify-content: center;
+  gap: 5px;
 }
 
-.quantize-enable-checkbox {
-  margin-left: 5px;
+.quantize-buttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 5px;
+}
+
+.quantize-button {
+  flex: 1;
+  height: 2.5rem;
+  font-size: 1.5rem;
+  background-color: #bbb;
+  color: #fff;
+  border-style: solid;
+  border-radius: 10px;
+  border-width: 5px;
+}
+
+.quantize-button.active {
+  background-color: #fff;
+  color: #999;
 }
 
 .quantize-denom-select {
-  margin-left: 10px;
+  font-family: 'Sono', monospace;
+  font-size: 1.5rem;
   width: 60px;
 }
 
 .kit-selector {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 10px;
   min-width: 220px;
 }
 
 .kit-selector label {
+  width: 100%;
   font-size: 0.95rem;
   font-weight: 600;
   color: #cbd5e1;
 }
 
 .kit-selector select {
-  min-width: 160px;
+  font-family: 'Sono', monospace;
+  font-size: 1.5rem;
+  width: 100%;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: 6px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(15, 23, 42, 0.9);
   color: #e2e8f0;
@@ -155,32 +232,69 @@ h1 {
 }
 
 .sequencer-panel {
+  flex: 1;
   padding: 0;
-  border-radius: 12px;
   background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.1);
-  height: 400px;
   display: flex;
   flex-direction: column;
 }
 
+.drum-pad-container {
+  flex: 1;
+  padding: 4px;
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+}
 
+.drum-pad-controls {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.drum-pad-controls button {
+  flex: 1;
+  border-width: 2px;
+  border-style: outset;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.5rem;
+}
+
+.drum-pad {
+  height: 100%;
+  font-size: 2rem;
+}
 
 .app-footer {
-  margin-top: 18px;
-  padding-top: 18px;
+  height: 1rem;
+  margin-top: 6px;
   border-top: 1px solid rgba(148, 163, 184, 0.1);
   color: #94a3b8;
 }
 
-@media (max-width: 800px) {
+.app-footer p {
+  margin: 0;
+  padding: 0;
+}
 
-  .app-header,
-  .controls-row {
-    grid-template-columns: 1fr;
+@keyframes glow {
+  0% {
+    border-color: #fff8;
   }
 
-  .app-header {
-    align-items: flex-start;
+  50% {
+    border-color: #fff;
+  }
+
+  75% {
+    border-color: #fff;
+  }
+
+  100% {
+    border-color: #fff8;
   }
 }

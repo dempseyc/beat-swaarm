@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-// import styles from './SequencerControl.module.css';
 import KitSelector from './KitSelector';
 import type { KitName } from './KitSelector';
 
@@ -18,9 +17,10 @@ export function SequencerControl({ onSequencerVolumeChange, selectedKit, onKitCh
     }, [seqVol, onSequencerVolumeChange]);
 
     return (
-        <div className='control sequencer-control'>
+        <div className='controls sequencer-controls'>
             <KitSelector selectedKit={selectedKit} onKitChange={onKitChange} />
             <input
+                className='mini-input'
                 type="range"
                 min="0" max="1" step="0.01"
                 value={seqVol}

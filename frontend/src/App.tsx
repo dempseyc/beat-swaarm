@@ -20,6 +20,8 @@ import Metror2Control from './components/Metror2Control';
 const KIT_SAMPLES = {
 
   haand: ['HAAND-hard.wav', 'HAAND-right.wav', 'HAAND-left.wav', 'HAAND-tap.wav'],
+  tiiine: ['TIIINE-low', 'TIIINE-midlow', 'TIIINE-midhigh', 'TIIINE-high'],
+  drumm: ['DRUMM-accent.wav', 'DRUMM-left.wav', 'DRUMM-right.wav', 'DRUMM-tap.wav'],
   bipp: ['BIPP-accent.wav', 'BIPP-right.wav', 'BIPP-left.wav', 'BIPP-tap.wav'],
   blokk: ['BLOKK-low.wav', 'BLOKK-midlow.wav', 'BLOKK-midhigh.wav', 'BLOKK-high.wav'],
   boingg: ['BOINGG-accent.wav', 'BOINGG-right.wav', 'BOINGG-left.wav', 'BOINGG-tap.wav'],
@@ -33,6 +35,8 @@ type KitName = keyof typeof KIT_SAMPLES;
 
 const KIT_LABELS: Record<KitName, string> = {
   haand: 'HAAND',
+  tiiine: 'TIIINE',
+  drumm: 'DRUMM',
   piaano: 'PIAANO',
   thumpp: 'THUMPP',
   pllluk: 'PLLLUK',
@@ -77,6 +81,29 @@ function App() {
   const [quantizeEnabled, setQuantizeEnabled] = useState<boolean>(true);
   const deletedNoteIdsRef = useRef<Set<string>>(new Set());
 
+  function snapToGridPR(time: number, denom: number, applyJitter = true) {
+    // denom is denominator of whole note (e.g., 16 -> 1/16)
+    // whole note duration = 240 / bpm seconds
+    const whole = 240 / (bpm || 120);
+    const unit = whole / denom;
+    let snapped = Math.max(0, Math.min(loopLength, Math.round(time / unit) * unit));
+    if (applyJitter) {
+      // add a tiny random delay between 0.000 and 0.002999 seconds (0 - 2.999 ms)
+      const jitter = Math.random() * 0.002999;
+      snapped = Math.min(loopLength, snapped + jitter);
+    }
+    return snapped;
+  }
+
+  const applyQuantizeAll = () => {
+    const newNotes = notes.map((n) => {
+      console.log('apply', n.id)
+      n.startTime = snapToGridPR(n.startTime, quantizeDenom, true);
+
+      return
+    })
+  }
+
   useEffect(() => {
     const engine = new AudioEngine();
     engine.init({ onPlayheadUpdate: time => setPlayheadTime(time) });
@@ -88,7 +115,7 @@ function App() {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        setNumClients(data.num_clients / 2); // hack unknown why backend count is doubled, maybe creates additional connection after handshake?
+        setNumClients(data.num_clients);
         if (data.type === 'server-time') {
           engine.setServerSync(data.epoch, data.timestamp);
           setEpoch(data.epochCount);
@@ -96,9 +123,8 @@ function App() {
           (window as any).clientId = data.clientId;
         } else if (data.type === 'main-loop-updated') {
           setEpoch(data.epochCount);
-
           engine.loadNextMainLoop(`${data.url}?t=${data.timestamp}`);
-          console.log('Received main loop update from server:', data);// hack unknown why backend count is doubled, maybe creates additional connection after handshake?
+          // console.log('Received main loop update from server:', performance.now());
         } else if (data.type === 'epoch-sync') {
           setEpoch(data.epochCount);
         }
@@ -154,7 +180,7 @@ function App() {
   // Delete invalid notes as playhead passes them
   useEffect(() => {
     notes.forEach(n => {
-      if (!n.valid && n.startTime <= playheadTime && !deletedNoteIdsRef.current.has(n.id)) {
+      if (!n.valid && n.startTime <= playheadTime + 0.01 && !deletedNoteIdsRef.current.has(n.id)) {
         deletedNoteIdsRef.current.add(n.id);
         setNotes(prevNotes => prevNotes.filter(note => note.id !== n.id));
       }
@@ -174,7 +200,7 @@ function App() {
     const loadPromises = getKitTrackFiles(selectedKit).map(({ trackId, filename }) => {
       const url = `/audio/native-kits/${selectedKit}/${filename}`;
       return engine.loadSample(trackId, url).catch(err => {
-        console.warn(`Failed to load kit sample ${filename}:`, err);
+        console.warn(`Failed to load kit sample ${url}:`, err);
       });
     });
 
@@ -213,20 +239,9 @@ function App() {
   }; // []
 
   useEffect(() => {
-    if (!keepGoing || isRendering) return;
-
-    // Check for playhead crossover (new loop)
-    if (playheadTime < lastPlayheadTimeRef.current) {
-      loopCounterRef.current += 1;
-
-      // Every 2 loops, re-upload to keep alive
-      if (loopCounterRef.current >= 2) {
-        loopCounterRef.current = 0;
-        handleRenderAndUpload();
-      }
-    }
-    lastPlayheadTimeRef.current = playheadTime;
-  }, [playheadTime, keepGoing, isRendering]);
+    if (!keepGoing) return;
+    handleRenderAndUpload();
+  }, [epoch, keepGoing]);
 
   const handleRenderAndUpload = async () => {
     if (!audioEngineRef.current || isRendering) return;
@@ -283,41 +298,42 @@ function App() {
     <div className="App">
       <div className="app-shell">
         <header className="app-header">
-          <div>
-            <p className="app-tag">BEATSWAARM</p>
-            <p className="app-copy">Double-click to add notes, drag to resize, double-click again to delete. Load a kit of samples to sequence.</p>
+          <div className="app-tag">BEATSWAARM</div>
+          <div className="status-display" >
+            <div className='time-signature'><span className='data-text'>4/4</span></div>
+            <div className='bpm'>BPM: <span className='data-text'>{bpm}</span></div>
+            <div className='swing'>GRV: <span className='data-text'>50</span></div>
+            <div className='client-count'># <span className='data-text'>{numClients}</span></div>
           </div>
-        </header>
 
+        </header>
+        <div className='controls transport-controls'>
+          <h1>{Math.ceil(playheadTime)}</h1>
+          <MasterMute isMuted={isMuted} onToggleMute={handleToggleMute} />
+          <button
+            className={`control-button render-button ${isRendering ? 'active' : ''}`}
+            onClick={handleRenderAndUpload}
+            disabled={isRendering}
+          >
+            TRNS
+          </button>
+          <button
+            onClick={() => setKeepGoing(!keepGoing)}
+            className={'control-button keep-going-button' + (keepGoing ? ' active' : '')}>
+            REPT
+          </button>
+        </div>
         <section className="controls-toolbar">
           <Metror1Control onM1VolumeChange={(vol) => {
             if (audioEngineRef.current) {
               audioEngineRef.current.setMetror1Volume(vol);
             }
           }} />
-          <div className="controls play-controls">
-            <div className='control transport-controls'>
-              <MasterMute isMuted={isMuted} onToggleMute={handleToggleMute} />
-              <button
-                className="render-button"
-                onClick={handleRenderAndUpload}
-                disabled={isRendering}
-
-              >
-                {isRendering ? '.....' : 'Transmit'}
-              </button>
-              <div className="keep-going-button">
-                <button onClick={() => setKeepGoing(!keepGoing)} className={keepGoing ? 'active' : ''}>
-                  REPT
-                </button>
-              </div>
-            </div>
-            <MainControl onMainVolumeChange={(vol) => {
-              if (audioEngineRef.current) {
-                audioEngineRef.current.setMainVolume(vol);
-              }
-            }} playheadTime={playheadTime} />
-          </div>
+          <MainControl onMainVolumeChange={(vol) => {
+            if (audioEngineRef.current) {
+              audioEngineRef.current.setMainVolume(vol);
+            }
+          }} />
           <Metror2Control onM2VolumeChange={(vol) => {
             if (audioEngineRef.current) {
               audioEngineRef.current.setMetror2Volume(vol);
@@ -326,11 +342,12 @@ function App() {
         </section>
 
 
-        <section className="controls-toolbar">
+        <section className="controls-toolbar sequencer-controls-toolbar">
 
           <QuantizeControl
             onToggle={(enabled) => setQuantizeEnabled(enabled)}
             onChangeDenom={(denom) => setQuantizeDenom(denom)}
+            onApply={() => { applyQuantizeAll() }}
           />
           <SequencerControl
             onSequencerVolumeChange={(vol) => {
@@ -341,12 +358,6 @@ function App() {
             selectedKit={selectedKit}
             onKitChange={setSelectedKit}
           />
-          <div className="control status-display" >
-            <div className='time-signature'>{'4/4'}</div>
-            <div className='bpm'>BPM: {bpm}</div>
-            <div className='swing'>Swing: 0.50</div>
-
-          </div>
         </section>
 
         <section className="sequencer-panel">

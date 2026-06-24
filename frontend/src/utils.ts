@@ -10,8 +10,8 @@ export function snapToGrid(time: number, denom: number, bpm: number, loopLength:
     const unit = whole / denom;
     let snapped = Math.max(0, Math.min(loopLength, Math.round(time / unit) * unit));
     if (applyJitter) {
-        // add a tiny random delay between 0.000 and 0.002999 seconds (0 - 2.999 ms)
-        const jitter = Math.random() * 0.002999;
+        // add a tiny random delay between 0.000 and 0.004999 seconds (0 - 4.999 ms)
+        const jitter = Math.random() * 0.004999;
         snapped = Math.min(loopLength, snapped + jitter);
     }
     return snapped;

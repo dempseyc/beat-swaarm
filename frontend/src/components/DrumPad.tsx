@@ -20,8 +20,8 @@ export function DrumPad({ onPadTrigger, isMuted, overwrite = false, handleOverwr
     };
 
     return (
-        <div className="drum-pad-container" style={{ display: 'flex', width: '100%', height: '150px', marginTop: '20px', gap: '10px' }}>
-            <div className="drum-pad-controls" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="drum-pad-container">
+            <div className="drum-pad-controls">
                 <button style={{ color: recording && !isMuted ? '#e04f5f' : '#222', border: 'none', borderRadius: '8px', cursor: 'pointer', backgroundColor: 'white', fontWeight: 'bold' }} onClick={() => setRecording(!recording)}>
                     REC+
                 </button>
@@ -35,32 +35,28 @@ export function DrumPad({ onPadTrigger, isMuted, overwrite = false, handleOverwr
                 onTouchStart={e => handleTrigger(e, 0)}
                 style={{ flex: 1, backgroundColor: TRACK_COLORS[0], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
-                Accent (0)
-            </button>
+                A            </button>
             <button
                 className="drum-pad left"
                 onMouseDown={e => handleTrigger(e, 1)}
                 onTouchStart={e => handleTrigger(e, 1)}
                 style={{ flex: 3, backgroundColor: TRACK_COLORS[1], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
-                Left (1)
-            </button>
+                S            </button>
             <button
                 className="drum-pad right"
                 onMouseDown={e => handleTrigger(e, 2)}
                 onTouchStart={e => handleTrigger(e, 2)}
                 style={{ flex: 3, backgroundColor: TRACK_COLORS[2], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
-                Right (2)
-            </button>
+                D            </button>
             <button
                 className="drum-pad tap"
                 onMouseDown={e => handleTrigger(e, 3)}
                 onTouchStart={e => handleTrigger(e, 3)}
                 style={{ flex: 1, backgroundColor: TRACK_COLORS[3], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
-                Tap (3)
-            </button>
+                F            </button>
         </div>
     );
 }

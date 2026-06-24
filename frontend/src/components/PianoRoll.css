@@ -1,4 +1,5 @@
 .piano-roll {
+    flex: 2 1;
     display: flex;
     flex-direction: row;
     height: 100%;
@@ -8,15 +9,9 @@
     overflow: hidden;
 }
 
-.piano-roll-header {
-    display: flex;
-    height: 60px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-    background: rgba(15, 23, 42, 0.5);
-}
-
 
 .clear-notes-button-container {
+    height: 100%;
     width: 5%;
     display: flex;
     flex-direction: column;
@@ -28,9 +23,7 @@
     background: rgba(255, 255, 255, 0.04);
     color: #e6eef8;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    padding: 4px;
     border-radius: 6px;
-    font-size: 0.75rem;
     cursor: pointer;
 }
 
@@ -75,6 +68,7 @@
 
 .piano-roll-track-row {
     display: flex;
+    flex: 1;
     border-bottom: 1px solid rgba(148, 163, 184, 0.08);
     background: rgba(15, 23, 42, 0.3);
 }

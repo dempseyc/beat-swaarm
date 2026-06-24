@@ -43,7 +43,7 @@ export class AudioEngine {
     private currentMainBuffer: AudioBuffer | null = null;
     private nextMainBuffer: AudioBuffer | null = null;
 
-    private scheduledLoops = new Set<number>();
+    private scheduledLoops = new Set<string>();
     private activeBackgroundSources = new Map<string, AudioBufferSourceNode>();
 
     // State
@@ -108,7 +108,7 @@ export class AudioEngine {
     async loadNextMainLoop(url: string) {
         try {
             this.nextMainBuffer = await this.loadBuffer(url);
-            console.log("Loaded new main loop buffer into 'next'");
+            // console.log("Loaded new main loop buffer into 'next'", performance.now());
         } catch (e) {
             console.error("Failed to load new main loop", e);
         }
@@ -156,6 +156,7 @@ export class AudioEngine {
     setMetror2Volume(volume: number) { this.vols.m2 = volume; if (this.m2Gain && !this.isMuted) this.m2Gain.gain.value = volume; }
 
     async renderLoop(): Promise<Blob> {
+        console.log("render");
         const sampleRate = 44100;
 
         // Render enough space for 1 loop + any tails from notes
@@ -163,7 +164,7 @@ export class AudioEngine {
         // We'll render exactly 2 loops of length, and then mathematically fold the tail of loop 1 into the start of loop 1
         const renderLength = this.loopLength * 2;
         const offlineCtx = new OfflineAudioContext(2, sampleRate * renderLength, sampleRate);
-        console.log(`Rendering loop with ${this.notes.length} notes, total render length ${renderLength}s at ${sampleRate}Hz`);
+        console.log(`Rendering loop with ${this.notes.length} notes`, performance.now());
 
         this.notes.forEach(note => {
             const buffer = this.sampleBuffers[note.trackId];
@@ -209,7 +210,6 @@ export class AudioEngine {
         if (!this.audioContext) return;
         console.log(this.audioContext.state);
         if (this.audioContext.state === 'suspended') this.audioContext.resume();
-        console.log(this.audioContext.state);
 
         this.isTransportRunning = true;
 
@@ -233,9 +233,10 @@ export class AudioEngine {
         this.schedule();
     }
 
-    private scheduleLoops(loopIndex: number, startAt: number, offset: number) {
-        if (!this.audioContext) return;
+    private scheduleLoops(loopIndex: number, startAt: number, offset: number): boolean {
+        if (!this.audioContext) return false;
 
+        let didSchedule = false;
         const scheduleMetror = (buffer: AudioBuffer | null, gain: GainNode | null, vol: number, metrorName: string) => {
             if (!buffer || !gain) return;
             const source = this.audioContext!.createBufferSource();
@@ -251,15 +252,17 @@ export class AudioEngine {
             source.onended = () => {
                 this.activeBackgroundSources.delete(activeKey);
             };
+
+            didSchedule = true;
         };
 
-        scheduleMetror(this.metror1Buffer, this.m1Gain, this.vols.m1, '1');
-        scheduleMetror(this.metror2Buffer, this.m2Gain, this.vols.m2, '2');
+        scheduleMetror(this.metror1Buffer, this.m1Gain, this.vols.m1, 'metror1');
+        scheduleMetror(this.metror2Buffer, this.m2Gain, this.vols.m2, 'metror2');
 
         // Also schedule the main loop perfectly matched with metrors
-        if (this.currentMainBuffer && this.mainGain) {
-            scheduleMetror(this.currentMainBuffer, this.mainGain, this.vols.main, 'main');
-        }
+        scheduleMetror(this.currentMainBuffer, this.mainGain, this.vols.main, 'main');
+
+        return didSchedule;
     }
 
     stop() {
@@ -296,6 +299,10 @@ export class AudioEngine {
         const currentPlayheadTime = Math.max(0, elapsed - loopIndex * this.loopLength);
         this.playheadTime = currentPlayheadTime;
 
+        const currentEpoch = this.serverEpoch
+            ? Math.max(0, Math.floor((Date.now() - this.serverTimeOffset - this.serverEpoch) / 1000 / this.loopLength))
+            : 0;
+
         if (this.onPlayheadUpdate) this.onPlayheadUpdate(currentPlayheadTime);
 
         this.scheduledNotes.forEach((scheduledTime, key) => {
@@ -329,9 +336,10 @@ export class AudioEngine {
         // Schedule notes for the current loop and the next loop to handle the window perfectly
         [loopIndex, loopIndex + 1].forEach(targetLoopIndex => {
             const loopAbsoluteStart = this.startTime + (targetLoopIndex * this.loopLength);
+            const scheduleKey = `${currentEpoch}-${targetLoopIndex}`;
 
             // Schedule background tracks (metrors and main loop) exactly once per loop
-            if (!this.scheduledLoops.has(targetLoopIndex)) {
+            if (!this.scheduledLoops.has(scheduleKey)) {
                 if (loopAbsoluteStart <= lookaheadTime && loopAbsoluteStart + this.loopLength > now) {
                     let startAt = loopAbsoluteStart;
                     let offset = 0;
@@ -339,8 +347,13 @@ export class AudioEngine {
                         offset = now - startAt;
                         startAt = now;
                     }
-                    this.scheduleLoops(targetLoopIndex, startAt, offset);
-                    this.scheduledLoops.add(targetLoopIndex);
+                    const didSchedule = this.scheduleLoops(targetLoopIndex, startAt, offset);
+                    if (didSchedule) {
+                        this.scheduledLoops.add(scheduleKey);
+                        console.log(`Added loop ${scheduleKey} to scheduledLoops`);
+                    } else {
+                        console.warn(`Failed to schedule loop ${scheduleKey}; will retry later`);
+                    }
                 }
             }
 
@@ -360,15 +373,17 @@ export class AudioEngine {
         });
 
         // Cleanup old scheduled loop records to prevent memory leak
-        this.scheduledLoops.forEach(idx => {
-            if (idx < loopIndex - 1) this.scheduledLoops.delete(idx);
+        this.scheduledLoops.forEach(key => {
+            const keyEpoch = parseInt(key.split('-')[0], 10);
+            if (!Number.isNaN(keyEpoch) && keyEpoch < currentEpoch - 2) {
+                this.scheduledLoops.delete(key);
+            }
         });
 
         this.requestId = requestAnimationFrame(() => this.schedule());
     }
 
     playNoteImmediate(trackId: TrackId, duration: number) {
-        console.log(this.audioContext?.state);
         if (!this.audioContext) return;
         const buffer = this.sampleBuffers[trackId];
         if (!buffer) return;

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import styles from './KitSelector.module.css';
 
-export type KitName = 'haand' | 'piaano' | 'thumpp' | 'pllluk' | 'bipp' | 'blokk' | 'boingg' | 'craigg';
+export type KitName = 'haand' | 'drumm' | 'tiiine' | 'piaano' | 'thumpp' | 'pllluk' | 'bipp' | 'blokk' | 'boingg' | 'craigg';
 
 const KIT_LABELS: Record<KitName, string> = {
     haand: 'HAAND',
+    tiiine: 'TIIINE',
+    drumm: 'DRUMM',
     piaano: 'PIAANO',
     thumpp: 'THUMPP',
     pllluk: 'PLLLUK',
@@ -30,8 +32,7 @@ export function KitSelector({ selectedKit, onKitChange }: KitSelectorProps) {
         return () => clearTimeout(timer);
     }, [selectedKit]);
 
-    return (<div className="kit-selector">
-        <label htmlFor="kit-select">Kit</label>
+    return (<div className="control kit-selector">
         <select
             style={{ display: kitLoading ? 'none' : 'block' }}
             value={selectedKit}

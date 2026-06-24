@@ -14,9 +14,9 @@ export function Metror1Control({ onM1VolumeChange }: Metror1ControlProps) {
     }, [metror1Vol, onM1VolumeChange]);
 
     return (
-        <div className='control metror-control metror1-control' style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '20px', background: '#1a1a1a', borderRadius: '8px' }}>
+        <div className='controls metror-control metror1-control' >
             <LightComponent triggerSignal={false} pulseLength={100} />
-            <h4>Metror 01 Volume</h4>
+            <h4>SYNCOR</h4>
             <input
                 className='mini-input'
                 type="range"

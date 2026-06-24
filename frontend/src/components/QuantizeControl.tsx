@@ -3,9 +3,10 @@ import React, { useEffect } from 'react';
 type QuantizeControlProps = {
     onToggle: (enabled: boolean) => void;
     onChangeDenom: (denom: number) => void;
+    onApply: () => void;
 };
 
-export function QuantizeControl({ onToggle, onChangeDenom }: QuantizeControlProps) {
+export function QuantizeControl({ onToggle, onChangeDenom, onApply }: QuantizeControlProps) {
     const [enabled, setEnabled] = React.useState(false);
     const [denom, setDenom] = React.useState(8);
     useEffect(() => {
@@ -15,21 +16,12 @@ export function QuantizeControl({ onToggle, onChangeDenom }: QuantizeControlProp
         onToggle(enabled);
     }, [enabled, onToggle]);
     return (
-        <div className="control quantize-controls">
-            <label
-                htmlFor="quantize-enable"
-                className="quantize-enable-label control-label"
-            >
-                Q:
-                <input
-                    type="checkbox"
-                    id="quantize-enable"
-                    className="quantize-enable-checkbox"
-                    checked={enabled}
-                    onChange={setEnabled.bind(null, !enabled)}
-                />
-            </label>
+        <div className="controls quantize-controls">
+            <div className='quantize-buttons'>
+                <button className={`quantize-button toggle ${enabled ? 'active' : ''}`} onClick={() => setEnabled(!enabled)}>Q</button>
+                <button className='quantize-button apply' onClick={() => onApply()}>⮑</button>
 
+            </div>
             <select
                 id="quantize-select"
                 className="quantize-denom-select"
