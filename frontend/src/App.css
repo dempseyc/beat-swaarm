@@ -66,10 +66,19 @@ h4 {
   font-size: 2rem;
 }
 
-.app-copy {
-  margin: 0;
-  max-width: 46rem;
+.info-card {
+  border-radius: 12px;
+  opacity: 0.8;
+  padding: 0.3rem;
+  font-family: 'Sono', monospace;
+  background-color: #fff;
   color: #000;
+  position: absolute;
+  z-index: 100;
+}
+
+.invisible {
+  display: none;
 }
 
 .status-panel {
@@ -199,7 +208,7 @@ h4 {
 .quantize-denom-select {
   font-family: 'Sono', monospace;
   font-size: 1.5rem;
-  width: 60px;
+  width: 100px;
 }
 
 .kit-selector {

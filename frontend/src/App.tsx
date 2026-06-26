@@ -10,17 +10,18 @@ import { SequencerControl } from './components/SequencerControl';
 import { AudioEngine } from './audio/audioEngine';
 import { DrumPad } from './components/DrumPad';
 import { addNote, createInitialSequencerState, deleteNote } from './state/sequencer';
-import { snapToGrid } from './utils';
+import { snapToGrid, generateNoteId } from './utils';
 import { Note, TrackId } from './types';
 import axios from 'axios';
 import Metror1Control from './components/Metror1Control';
 import MainControl from './components/MainControl';
 import Metror2Control from './components/Metror2Control';
+import InfoCard from './components/InfoCard';
 
 const KIT_SAMPLES = {
 
   haand: ['HAAND-hard.wav', 'HAAND-right.wav', 'HAAND-left.wav', 'HAAND-tap.wav'],
-  tiiine: ['TIIINE-low', 'TIIINE-midlow', 'TIIINE-midhigh', 'TIIINE-high'],
+  tiiine: ['TIIINE-low.wav', 'TIIINE-midlow.wav', 'TIIINE-midhigh.wav', 'TIIINE-high.wav'],
   drumm: ['DRUMM-accent.wav', 'DRUMM-left.wav', 'DRUMM-right.wav', 'DRUMM-tap.wav'],
   bipp: ['BIPP-accent.wav', 'BIPP-right.wav', 'BIPP-left.wav', 'BIPP-tap.wav'],
   blokk: ['BLOKK-low.wav', 'BLOKK-midlow.wav', 'BLOKK-midhigh.wav', 'BLOKK-high.wav'],
@@ -59,7 +60,9 @@ function getKitTrackFiles(kit: KitName) {
 function App() {
   const initialStateRef = useRef(createInitialSequencerState());
   const initialState = initialStateRef.current;
+  const notesRef = useRef<Note[]>(initialState.notes);
   const [notes, setNotes] = useState(initialState.notes);
+  notesRef.current = notes;
   const bpm = initialState.bpm;
   const [epoch, setEpoch] = useState(initialState.epoch);
   const [numClients, setNumClients] = useState(1);
@@ -79,6 +82,7 @@ function App() {
 
   const [quantizeDenom, setQuantizeDenom] = useState<number>(4); // default 1/4 note
   const [quantizeEnabled, setQuantizeEnabled] = useState<boolean>(true);
+  const [infoVisible, setInfoVisible] = useState<boolean>(true);
   const deletedNoteIdsRef = useRef<Set<string>>(new Set());
 
   function snapToGridPR(time: number, denom: number, applyJitter = true) {
@@ -96,13 +100,33 @@ function App() {
   }
 
   const applyQuantizeAll = () => {
-    const newNotes = notes.map((n) => {
-      console.log('apply', n.id)
-      n.startTime = snapToGridPR(n.startTime, quantizeDenom, true);
+    if (!quantizeEnabled) return;
 
-      return
-    })
-  }
+    const quantizedNotes = notes.map((note) => ({
+      ...note,
+      startTime: snapToGridPR(note.startTime, quantizeDenom, true),
+    }));
+
+    const dedupedNotes: Note[] = [];
+    const seenPairs = new Set<string>();
+
+    for (const note of quantizedNotes) {
+      const key = `${note.trackId}:${note.startTime.toFixed(3)}`;
+      const duplicate = dedupedNotes.find(existing =>
+        existing.trackId === note.trackId &&
+        Math.abs(existing.startTime - note.startTime) < 0.01
+      );
+
+      if (duplicate) {
+        continue;
+      }
+
+      dedupedNotes.push(note);
+      seenPairs.add(key);
+    }
+
+    setNotes(dedupedNotes);
+  };
 
   useEffect(() => {
     const engine = new AudioEngine();
@@ -266,39 +290,67 @@ function App() {
     }
   };
 
-  const handlePadTrigger = (trackId: TrackId, recording: boolean) => {
-    console.log("pad trigger", Date.now())
+  const activePadNotesRef = useRef<Map<TrackId, { startTime: number; id: string }>>(new Map());
+
+  const handlePadTrigger = (trackId: TrackId, recording: boolean, duration: number = 0, startTime: number = playheadTime) => {
+    console.log("pad trigger", Date.now());
     if (!audioEngineRef.current) return;
 
-    // Play immediately
     if (audioEngineRef.current.isTransportRunning) {
       audioEngineRef.current.start();
     }
-    audioEngineRef.current.playNoteImmediate(trackId, 0.25);
 
-    // Add to sequencer if recording
-    recording && !isMuted && setNotes(prevNotes => {
-      let startTime = playheadTime;
+    if (!recording || isMuted) return;
+
+    if (duration <= 0) {
+      audioEngineRef.current.playNoteImmediate(trackId, 0.25);
+      console.log("PRESS PATH", { trackId, duration, playheadTime: startTime });
+      if (activePadNotesRef.current.has(trackId)) {
+        console.log("Press ignored: note already active", { trackId });
+        return;
+      }
+
+      let noteStartTime = startTime;
       if (quantizeEnabled) {
-        startTime = snapToGrid(startTime, quantizeDenom, bpm, loopLength, true);
-      }
-      // if note already exists at this time for the track, replace with new note instead allowing a tolerance of 15ms after quantization
-      const existing = prevNotes.find(n => n.trackId === trackId && Math.abs(n.startTime - startTime) < 0.015);
-      if (existing) {
-        return prevNotes.map(n => n.id === existing.id ? { ...n, startTime } : n);
+        noteStartTime = snapToGrid(noteStartTime, quantizeDenom, bpm, loopLength, true);
       }
 
-      return addNote(prevNotes, trackId, startTime, 2 / quantizeDenom || 0.5);
-    });
+      const newNotes = addNote(notesRef.current, trackId, noteStartTime, 0.05);
+      const addedNote = newNotes[newNotes.length - 1];
+      console.log("Press: storing in ref", { trackId, addedNote });
+      activePadNotesRef.current.set(trackId, { startTime: noteStartTime, id: addedNote.id });
+      notesRef.current = newNotes;
+      setNotes(newNotes);
+      return;
+    }
+
+    console.log("RELEASE PATH", { trackId, duration });
+    const noteDuration = Math.max(0.05, duration);
+    const activeNote = activePadNotesRef.current.get(trackId);
+    console.log("Release: found activeNote", { trackId, activeNote, noteDuration });
+
+    if (!activeNote) {
+      console.warn("Release: no active note found!");
+      return;
+    }
+
+    const updatedNotes = notesRef.current.map(note =>
+      note.id === activeNote.id ? { ...note, duration: noteDuration } : note
+    );
+    activePadNotesRef.current.delete(trackId);
+    notesRef.current = updatedNotes;
+    setNotes(updatedNotes);
   };
-
-  const timeDisplay = playheadTime.toFixed(2);
 
   return (
     <div className="App">
       <div className="app-shell">
         <header className="app-header">
-          <div className="app-tag">BEATSWAARM</div>
+          <div className='tag-container' onClick={() => setInfoVisible(!infoVisible)}>
+            <div className="app-tag">BEATSWAARM</div>
+            <div className='app-tag-tagline'>{`Click ${infoVisible ? 'to HIDE' : 'for INFO'}`}</div>
+            <InfoCard setInfoVisible={setInfoVisible} infoVisible={infoVisible} />
+          </div>
           <div className="status-display" >
             <div className='time-signature'><span className='data-text'>4/4</span></div>
             <div className='bpm'>BPM: <span className='data-text'>{bpm}</span></div>
@@ -370,7 +422,13 @@ function App() {
             quantizeDenom={quantizeEnabled ? quantizeDenom : 0}
             overwrite={overwrite}
           />
-          <DrumPad onPadTrigger={handlePadTrigger} isMuted={isMuted} overwrite={overwrite} handleOverwriteToggle={handleOverwriteToggle} />
+          <DrumPad
+            onPadTrigger={handlePadTrigger}
+            isMuted={isMuted}
+            overwrite={overwrite}
+            handleOverwriteToggle={handleOverwriteToggle}
+            getCurrentPlayheadTime={() => audioEngineRef.current?.getCurrentPlayheadTime() ?? playheadTime}
+          />
         </section>
 
         <footer className="app-footer">

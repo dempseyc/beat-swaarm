@@ -133,6 +133,20 @@ export class AudioEngine {
 
     setNotes(notes: Note[]) { this.notes = notes; }
 
+    getCurrentPlayheadTime(): number {
+        if (!this.audioContext || !this.isTransportRunning) {
+            return this.playheadTime;
+        }
+
+        const elapsed = this.audioContext.currentTime - this.startTime;
+        if (!Number.isFinite(elapsed) || this.loopLength <= 0) {
+            return this.playheadTime;
+        }
+
+        const loopIndex = Math.floor(elapsed / this.loopLength);
+        return Math.max(0, elapsed - loopIndex * this.loopLength);
+    }
+
     clearSamples() {
         this.sampleBuffers = { 0: null, 1: null, 2: null, 3: null };
         this.sampleLoadPromises = {};
