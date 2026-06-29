@@ -189,8 +189,10 @@ export class AudioEngine {
             source1.buffer = buffer;
             source1.detune.value = this.kitDetune;
             const gain1 = offlineCtx.createGain();
+            gain1.gain.setValueAtTime(1, note.startTime);
+            gain1.gain.linearRampToValueAtTime(0, note.startTime + note.duration + 0.05);
             source1.connect(gain1).connect(offlineCtx.destination);
-            source1.start(note.startTime); // Start without duration restriction to allow full tail
+            source1.start(note.startTime, 0, note.duration + 0.05);
 
             // Also render it exactly one loop later, so notes with long tails at the end of the loop 
             // cross over properly when we extract the exact loop block
@@ -198,8 +200,10 @@ export class AudioEngine {
             source2.buffer = buffer;
             source2.detune.value = this.kitDetune;
             const gain2 = offlineCtx.createGain();
+            gain2.gain.setValueAtTime(1, note.startTime + this.loopLength);
+            gain2.gain.linearRampToValueAtTime(0, note.startTime + this.loopLength + note.duration + 0.05);
             source2.connect(gain2).connect(offlineCtx.destination);
-            source2.start(note.startTime + this.loopLength);
+            source2.start(note.startTime + this.loopLength, 0, note.duration + 0.05);
         });
 
         const renderedBuffer = await offlineCtx.startRendering();
