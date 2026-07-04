@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Note, TrackId, TRACK_IDS } from '../types';
 import { addNote, deleteNote, updateNote } from '../state/sequencer';
 import { TRACK_COLORS } from '../constants';
+import { usePointerInput } from '../hooks/usePointerInput';
 // ts-ignore for CSS import
 // @ts-ignore
 import './PianoRoll.css';
@@ -94,7 +95,29 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
         });
     };
 
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { createPointerHandlers, pointerStyle } = usePointerInput();
+
+    const handlePointerDown = (event: React.PointerEvent, noteId: string, resizeType: 'start' | 'end' | null) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        const rect = scrollRef.current?.getBoundingClientRect();
+        if (!rect) return;
+
+        const note = notes.find(n => n.id === noteId);
+        if (!note) return;
+
+        const dragType = resizeType === 'start' ? 'resizeStart' : resizeType === 'end' ? 'resizeEnd' : 'move';
+
+        setDragState({
+            type: dragType,
+            noteId,
+            startX: event.clientX,
+            originalStartTime: note.startTime,
+            originalDuration: note.duration,
+        });
+    };
+
+    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
         if (!dragState.type || !dragState.noteId) return;
 
         const rect = scrollRef.current?.getBoundingClientRect();
@@ -139,7 +162,7 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
         onNotesChange(updatedNotes);
     };
 
-    const handleMouseUp = () => {
+    const handlePointerUp = () => {
         setDragState({ type: null, noteId: null, startX: 0, originalStartTime: 0, originalDuration: 0 });
     };
 
@@ -148,9 +171,14 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
     return (
         <div
             className="piano-roll flex-row"
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            {...createPointerHandlers({
+                onMove: handlePointerMove,
+                onUp: handlePointerUp,
+                onCancel: handlePointerUp,
+                stopPropagation: false,
+                capture: true,
+            })}
+            style={{ touchAction: 'none' }}
         >
             <div className="clear-notes-button-container">
                 <button
@@ -201,15 +229,28 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
                                             backgroundColor: TRACK_COLORS[trackId]
                                         }}
                                         onDoubleClick={e => handleNoteDoubleClick(e, note.id)}
-                                        onMouseDown={e => handleMouseDown(e, note.id, null)}
+                                        {...createPointerHandlers({
+                                            onDown: e => handlePointerDown(e, note.id, null),
+                                            stopPropagation: true,
+                                            capture: false,
+                                        })}
+                                        style={{ ...pointerStyle }}
                                     >
                                         <div
                                             className="piano-roll-note-resize-start"
-                                            onMouseDown={e => { e.stopPropagation(); handleMouseDown(e, note.id, 'start'); }}
+                                            {...createPointerHandlers({
+                                                onDown: e => { e.stopPropagation(); handlePointerDown(e, note.id, 'start'); },
+                                                stopPropagation: true,
+                                                capture: false,
+                                            })}
                                         />
                                         <div
                                             className="piano-roll-note-resize-end"
-                                            onMouseDown={e => { e.stopPropagation(); handleMouseDown(e, note.id, 'end'); }}
+                                            {...createPointerHandlers({
+                                                onDown: e => { e.stopPropagation(); handlePointerDown(e, note.id, 'end'); },
+                                                stopPropagation: true,
+                                                capture: false,
+                                            })}
                                         />
                                     </div>
                                 ))}

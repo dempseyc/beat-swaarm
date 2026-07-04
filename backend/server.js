@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -183,10 +185,11 @@ function mixMainLoop() {
 };
 
 function broadcastNewMain() {
+    const publicBaseUrl = process.env.NODE_ENV === "production" ? process.env.PUBLIC_URL : process.env.PUBLIC_URL_DEV || `http://localhost:${PORT}`;
     const broadcast = JSON.stringify({
         type: 'main-loop-updated',
         timestamp: Date.now(),
-        url: `http://localhost:${PORT}/public/main.wav`,
+        url: `${publicBaseUrl}/public/main.wav`,
         num_clients: `${wss.clients.size || 0}`,
         epochCount: epochCount()
     });

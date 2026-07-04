@@ -1,6 +1,7 @@
 import React from 'react';
 import { TrackId } from '../types';
 import { TRACK_COLORS } from '../constants';
+import { usePointerInput } from '../hooks/usePointerInput';
 
 
 interface DrumPadProps {
@@ -77,18 +78,18 @@ export function DrumPad({ onPadTrigger, isMuted, overwrite = false, handleOverwr
         };
     }, [onPadTrigger]);
 
-    const handleTriggerStart = (e: React.MouseEvent | React.TouchEvent, trackId: TrackId) => {
-        e.preventDefault();
-        startPad(trackId);
-    };
+    const { createPointerHandlers, pointerStyle } = usePointerInput();
 
-    const handleTriggerEnd = (e: React.MouseEvent | React.TouchEvent, trackId: TrackId) => {
-        e.preventDefault();
-        endPad(trackId);
-    };
+    const makePadHandlers = (trackId: TrackId) =>
+        createPointerHandlers({
+            onDown: () => startPad(trackId),
+            onUp: () => endPad(trackId),
+            onCancel: () => endPad(trackId),
+            stopPropagation: true,
+        });
 
     return (
-        <div className="drum-pad-container">
+        <div className="drum-pad-container" style={{ touchAction: 'none' }}>
             <div className="drum-pad-controls">
                 <button style={{ color: recording && !isMuted ? '#e04f5f' : '#222', border: 'none', borderRadius: '8px', cursor: 'pointer', backgroundColor: 'white', fontWeight: 'bold' }} onClick={() => setRecording(!recording)}>
                     REC+
@@ -99,37 +100,25 @@ export function DrumPad({ onPadTrigger, isMuted, overwrite = false, handleOverwr
             </div>
             <button
                 className="drum-pad accent"
-                onPointerDown={e => handleTriggerStart(e, 0)}
-                onPointerUp={e => handleTriggerEnd(e, 0)}
-                onPointerLeave={e => handleTriggerEnd(e, 0)}
-                onPointerCancel={e => handleTriggerEnd(e, 0)}
-                style={{ flex: 1, backgroundColor: TRACK_COLORS[0], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
+                {...makePadHandlers(0)}
+                style={{ ...pointerStyle, flex: 1, backgroundColor: TRACK_COLORS[0], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
                 A            </button>
             <button
                 className="drum-pad left"
-                onPointerDown={e => handleTriggerStart(e, 1)}
-                onPointerUp={e => handleTriggerEnd(e, 1)}
-                onPointerLeave={e => handleTriggerEnd(e, 1)}
-                onPointerCancel={e => handleTriggerEnd(e, 1)}
+                {...makePadHandlers(1)}
                 style={{ flex: 3, backgroundColor: TRACK_COLORS[1], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
                 S            </button>
             <button
                 className="drum-pad right"
-                onPointerDown={e => handleTriggerStart(e, 2)}
-                onPointerUp={e => handleTriggerEnd(e, 2)}
-                onPointerLeave={e => handleTriggerEnd(e, 2)}
-                onPointerCancel={e => handleTriggerEnd(e, 2)}
+                {...makePadHandlers(2)}
                 style={{ flex: 3, backgroundColor: TRACK_COLORS[2], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
                 D            </button>
             <button
                 className="drum-pad tap"
-                onPointerDown={e => handleTriggerStart(e, 3)}
-                onPointerUp={e => handleTriggerEnd(e, 3)}
-                onPointerLeave={e => handleTriggerEnd(e, 3)}
-                onPointerCancel={e => handleTriggerEnd(e, 3)}
+                {...makePadHandlers(3)}
                 style={{ flex: 1, backgroundColor: TRACK_COLORS[3], border: 'none', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold' }}
             >
                 F            </button>

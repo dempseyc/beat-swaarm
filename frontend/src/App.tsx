@@ -135,7 +135,11 @@ function App() {
     engine.setTempo(initialState.bpm);
     engine.setLoopLength(initialState.loopLength);
 
-    const ws = new WebSocket('ws://localhost:4000');
+    const ws = new WebSocket(
+      process.env.NODE_ENV === "production"
+        ? `${window.location.protocol === "https:" ? "wss" : "ws"}://beatswaarm.craig-dempsey.com`
+        : "ws://localhost:4000"
+    );
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -222,7 +226,7 @@ function App() {
     setKitLoading(true);
 
     const loadPromises = getKitTrackFiles(selectedKit).map(({ trackId, filename }) => {
-      const url = `/audio/native-kits/${selectedKit}/${filename}`;
+      const url = `${process.env.PUBLIC_URL}/audio/native-kits/${selectedKit}/${filename}`;
       return engine.loadSample(trackId, url).catch(err => {
         console.warn(`Failed to load kit sample ${url}:`, err);
       });
@@ -277,7 +281,7 @@ function App() {
       formData.append('loop', wavBlob, 'loop.wav');
       formData.append('clientId', (window as any).clientId || 'unknown');
 
-      await axios.post('http://localhost:4000/upload', formData, {
+      await axios.post(process.env.NODE_ENV === "production" ? process.env.PUBLIC_URL + '/upload' : 'http://localhost:4000/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -351,12 +355,12 @@ function App() {
             <div className='app-tag-tagline'>{`Click ${infoVisible ? 'to HIDE' : 'for INFO'}`}</div>
             <InfoCard setInfoVisible={setInfoVisible} infoVisible={infoVisible} />
           </div>
-          <div className="status-display" >
+          {/* <div className="status-display" >
             <div className='time-signature'><span className='data-text'>4/4</span></div>
             <div className='bpm'>BPM: <span className='data-text'>{bpm}</span></div>
             <div className='swing'>GRV: <span className='data-text'>50</span></div>
             <div className='client-count'># <span className='data-text'>{numClients}</span></div>
-          </div>
+          </div> */}
 
         </header>
         <div className='controls transport-controls'>

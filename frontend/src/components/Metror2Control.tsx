@@ -16,7 +16,7 @@ export function Metror2Control({ onM2VolumeChange }: Metror2ControlProps) {
     return (
         <div className='controls metror-control metror2-control'  >
             <LightComponent triggerSignal={false} pulseLength={100} />
-            <h4>TACTOR</h4>
+            <h3>TACTOR</h3>
             <input
                 className='mini-input'
                 type="range"
