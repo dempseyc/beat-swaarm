@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Note, TrackId, TRACK_IDS } from '../types';
 import { addNote, deleteNote, updateNote } from '../state/sequencer';
 import { TRACK_COLORS } from '../constants';
-import { usePointerInput } from '../hooks/usePointerInput';
+import { usePointerInput, NormalizedPointerEvent } from '../hooks/usePointerInput';
 // ts-ignore for CSS import
 // @ts-ignore
 import './PianoRoll.css';
@@ -97,9 +97,9 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
 
     const { createPointerHandlers, pointerStyle } = usePointerInput();
 
-    const handlePointerDown = (event: React.PointerEvent, noteId: string, resizeType: 'start' | 'end' | null) => {
+    const handlePointerDown = (event: NormalizedPointerEvent, noteId: string, resizeType: 'start' | 'end' | null) => {
         if (event.button !== 0) return;
-        event.preventDefault();
+        event.originalEvent.preventDefault();
         const rect = scrollRef.current?.getBoundingClientRect();
         if (!rect) return;
 
@@ -117,7 +117,7 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
         });
     };
 
-    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const handlePointerMove = (e: NormalizedPointerEvent) => {
         if (!dragState.type || !dragState.noteId) return;
 
         const rect = scrollRef.current?.getBoundingClientRect();
@@ -162,7 +162,7 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
         onNotesChange(updatedNotes);
     };
 
-    const handlePointerUp = () => {
+    const handlePointerUp = (_e?: NormalizedPointerEvent) => {
         setDragState({ type: null, noteId: null, startX: 0, originalStartTime: 0, originalDuration: 0 });
     };
 
@@ -217,43 +217,47 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
                                 ref={trackId === 0 ? scrollRef : undefined}
                                 className="piano-roll-track-content"
                             >
-                                {trackNotes[trackId].map(note => (
-                                    <div
-                                        key={note.id}
-                                        className="piano-roll-note"
-                                        style={{
-                                            left: `${(note.startTime / loopLength) * 100}%`,
-                                            width: `${(note.duration / loopLength) * 100}%`,
-                                            height: '50%',
-                                            top: '25%',
-                                            backgroundColor: TRACK_COLORS[trackId]
-                                        }}
-                                        onDoubleClick={e => handleNoteDoubleClick(e, note.id)}
-                                        {...createPointerHandlers({
-                                            onDown: e => handlePointerDown(e, note.id, null),
-                                            stopPropagation: true,
-                                            capture: false,
-                                        })}
-                                        style={{ ...pointerStyle }}
-                                    >
+                                {trackNotes[trackId].map(note => {
+                                    const noteStyle: React.CSSProperties = {
+                                        ...pointerStyle,
+                                        left: `${(note.startTime / loopLength) * 100}%`,
+                                        width: `${(note.duration / loopLength) * 100}%`,
+                                        height: '50%',
+                                        top: '25%',
+                                        backgroundColor: TRACK_COLORS[trackId]
+                                    };
+
+                                    return (
                                         <div
-                                            className="piano-roll-note-resize-start"
+                                            key={note.id}
+                                            className="piano-roll-note"
+                                            style={noteStyle}
+                                            onDoubleClick={e => handleNoteDoubleClick(e, note.id)}
                                             {...createPointerHandlers({
-                                                onDown: e => { e.stopPropagation(); handlePointerDown(e, note.id, 'start'); },
+                                                onDown: e => handlePointerDown(e, note.id, null),
                                                 stopPropagation: true,
                                                 capture: false,
                                             })}
-                                        />
-                                        <div
-                                            className="piano-roll-note-resize-end"
-                                            {...createPointerHandlers({
-                                                onDown: e => { e.stopPropagation(); handlePointerDown(e, note.id, 'end'); },
-                                                stopPropagation: true,
-                                                capture: false,
-                                            })}
-                                        />
-                                    </div>
-                                ))}
+                                        >
+                                            <div
+                                                className="piano-roll-note-resize-start"
+                                                {...createPointerHandlers({
+                                                    onDown: e => { e.originalEvent.stopPropagation(); handlePointerDown(e, note.id, 'start'); },
+                                                    stopPropagation: true,
+                                                    capture: false,
+                                                })}
+                                            />
+                                            <div
+                                                className="piano-roll-note-resize-end"
+                                                {...createPointerHandlers({
+                                                    onDown: e => { e.originalEvent.stopPropagation(); handlePointerDown(e, note.id, 'end'); },
+                                                    stopPropagation: true,
+                                                    capture: false,
+                                                })}
+                                            />
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     ))}
