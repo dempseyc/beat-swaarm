@@ -26,7 +26,6 @@ interface DragState {
 }
 
 export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm, quantizeDenom = 0, overwrite }: PianoRollProps) {
-    const [playHeadErase, setPlayheadErase] = useState(overwrite);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [dragState, setDragState] = useState<DragState>({
         type: null,
@@ -37,13 +36,16 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
     });
     const activeQuantizeDenom = quantizeDenom > 0 ? quantizeDenom : 16;
 
-    const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>, trackId: TrackId) => {
-        if (e.button !== 0) return;
+    const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement> | NormalizedPointerEvent, trackId: TrackId) => {
+        // Accept either mouse double-click event or our normalized pointer double-tap
+        const button = (e as any).button;
+        if (button !== 0) return;
 
         const rect = scrollRef.current?.getBoundingClientRect();
         if (!rect) return;
 
-        const clickX = e.clientX - rect.left;
+        const clientX = (e as any).clientX as number;
+        const clickX = clientX - rect.left;
         const width = rect.width;
         const startTime = (clickX / width) * loopLength;
 
@@ -72,27 +74,6 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
         e.stopPropagation();
         const newNotes = deleteNote(notes, noteId);
         onNotesChange(newNotes);
-    };
-
-    const handleMouseDown = (e: React.MouseEvent, noteId: string, resizeType: 'start' | 'end' | null) => {
-        if (e.button !== 0) return;
-        e.preventDefault();
-
-        const rect = scrollRef.current?.getBoundingClientRect();
-        if (!rect) return;
-
-        const note = notes.find(n => n.id === noteId);
-        if (!note) return;
-
-        const dragType = resizeType === 'start' ? 'resizeStart' : resizeType === 'end' ? 'resizeEnd' : 'move';
-
-        setDragState({
-            type: dragType,
-            noteId,
-            startX: e.clientX,
-            originalStartTime: note.startTime,
-            originalDuration: note.duration,
-        });
     };
 
     const { createPointerHandlers, pointerStyle } = usePointerInput();
@@ -212,6 +193,11 @@ export function PianoRoll({ notes, playheadTime, loopLength, onNotesChange, bpm,
                             key={trackId}
                             className="piano-roll-track-row"
                             onDoubleClick={e => handleDoubleClick(e, trackId)}
+                            {...createPointerHandlers({
+                                onDoubleClick: (ev) => { if (ev.pointerType !== 'mouse') handleDoubleClick(ev, trackId); },
+                                stopPropagation: false,
+                                capture: false,
+                            })}
                         >
                             <div
                                 ref={trackId === 0 ? scrollRef : undefined}

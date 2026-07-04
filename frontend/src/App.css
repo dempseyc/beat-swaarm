@@ -255,6 +255,7 @@ h4 {
 .sequencer-panel {
   flex: 1;
   padding: 0;
+  margin-bottom: 20px;
   background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.1);
   display: flex;

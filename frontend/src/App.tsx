@@ -146,11 +146,10 @@ function App() {
         setNumClients(data.num_clients);
         if (data.type === 'server-time') {
           engine.setServerSync(data.epoch, data.timestamp);
-          setEpoch(data.epochCount);
+          // setEpoch(data.epochCount);
           // Store client ID for uploads
           (window as any).clientId = data.clientId;
         } else if (data.type === 'main-loop-updated') {
-          setEpoch(data.epochCount);
           engine.loadNextMainLoop(`${data.url}?t=${data.timestamp}`);
           // console.log('Received main loop update from server:', performance.now());
         } else if (data.type === 'epoch-sync') {
@@ -204,11 +203,10 @@ function App() {
     }
   }, [overwrite, punchtime]);
 
-
   // Delete invalid notes as playhead passes them
   useEffect(() => {
     notes.forEach(n => {
-      if (!n.valid && n.startTime <= playheadTime + 0.01 && !deletedNoteIdsRef.current.has(n.id)) {
+      if (!n.valid && (playheadTime - 0.03 <= n.startTime) && (n.startTime <= playheadTime + 0.01) && !deletedNoteIdsRef.current.has(n.id)) {
         deletedNoteIdsRef.current.add(n.id);
         setNotes(prevNotes => prevNotes.filter(note => note.id !== n.id));
       }

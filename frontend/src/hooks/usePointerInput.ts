@@ -97,22 +97,28 @@ export function usePointerInput() {
 
             const normalized = normalizeEvent(event);
             const target = event.currentTarget as Element;
-            if (callbacks.capture !== false) {
-                target.setPointerCapture?.(event.pointerId);
-            }
-            activePointersRef.current.add(event.pointerId);
-            if (callbacks.stopPropagation) event.stopPropagation();
-            event.preventDefault();
+            const shouldHandle = event.pointerType !== 'mouse';
 
-            if (callbacks.onDoubleClick && isDoubleTap(normalized)) {
+            if (shouldHandle) {
+                if (callbacks.capture !== false) {
+                    target.setPointerCapture?.(event.pointerId);
+                }
+                activePointersRef.current.add(event.pointerId);
+                if (callbacks.stopPropagation) event.stopPropagation();
+                event.preventDefault();
+            }
+
+            if (callbacks.onDoubleClick && shouldHandle && isDoubleTap(normalized)) {
                 callbacks.onDoubleClick(normalized);
             }
 
-            callbacks.onDown?.(normalized);
+            if (shouldHandle) {
+                callbacks.onDown?.(normalized);
+            }
         };
 
         const handlePointerMove: React.PointerEventHandler = (event) => {
-            if (!activePointersRef.current.has(event.pointerId)) return;
+            if (!activePointersRef.current.has(event.pointerId) || event.pointerType === 'mouse') return;
             const normalized = normalizeEvent(event);
             if (callbacks.stopPropagation) event.stopPropagation();
             callbacks.onMove?.(normalized);
@@ -129,16 +135,20 @@ export function usePointerInput() {
 
         const handlePointerUp: React.PointerEventHandler = (event) => {
             const normalized = normalizeEvent(event);
-            cleanupPointer(event);
-            if (callbacks.stopPropagation) event.stopPropagation();
-            callbacks.onUp?.(normalized);
+            if (event.pointerType !== 'mouse') {
+                cleanupPointer(event);
+                if (callbacks.stopPropagation) event.stopPropagation();
+                callbacks.onUp?.(normalized);
+            }
         };
 
         const handlePointerCancel: React.PointerEventHandler = (event) => {
             const normalized = normalizeEvent(event);
-            cleanupPointer(event);
-            if (callbacks.stopPropagation) event.stopPropagation();
-            callbacks.onCancel?.(normalized);
+            if (event.pointerType !== 'mouse') {
+                cleanupPointer(event);
+                if (callbacks.stopPropagation) event.stopPropagation();
+                callbacks.onCancel?.(normalized);
+            }
         };
 
         return {

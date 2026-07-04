@@ -80,13 +80,26 @@ export function DrumPad({ onPadTrigger, isMuted, overwrite = false, handleOverwr
 
     const { createPointerHandlers, pointerStyle } = usePointerInput();
 
-    const makePadHandlers = (trackId: TrackId) =>
-        createPointerHandlers({
+    const makePadHandlers = (trackId: TrackId) => ({
+        ...createPointerHandlers({
             onDown: () => startPad(trackId),
             onUp: () => endPad(trackId),
             onCancel: () => endPad(trackId),
             stopPropagation: true,
-        });
+        }),
+        onMouseDown: (event: React.MouseEvent<HTMLButtonElement>) => {
+            event.preventDefault();
+            startPad(trackId);
+        },
+        onMouseUp: (event: React.MouseEvent<HTMLButtonElement>) => {
+            event.preventDefault();
+            endPad(trackId);
+        },
+        onMouseLeave: (event: React.MouseEvent<HTMLButtonElement>) => {
+            event.preventDefault();
+            endPad(trackId);
+        },
+    });
 
     return (
         <div className="drum-pad-container" style={{ touchAction: 'none' }}>
